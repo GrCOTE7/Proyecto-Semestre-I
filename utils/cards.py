@@ -40,7 +40,7 @@ class Card:
         self.rank = rank
 
     def __str__(self):
-        return f"{self.rank} {self.suit}"
+        return f"{self.rank.value}{self.suit.value}"
 
     def __repr__(self):
         return f"Card('{self.suit}', '{self.rank}')"
@@ -61,7 +61,7 @@ class Deck:
         if shuffle:
             self.shuffle()
 
-    def remaining_cards(self):
+    def remaining_cards(self) -> int:
         """Return the number of remaining cards in the deck."""
         return len(self.cards)
 
@@ -69,16 +69,22 @@ class Deck:
         """Shuffle the deck of cards."""
         random.shuffle(self.cards)
 
-    def deal(self, num_cards: int = 1):
+    def deal(self, num_cards: int = 1, reshuffle=True) -> list[Card]:
         """
         Deal a specified number of cards from the top of the deck.
 
-        Raises `ValueError` if there are not enough cards in the deck to deal.
+        If `reshuffle` then it generates a new deck if dealing clears it out, otherwise raises `ValueError` if there are not enough cards in the deck to deal.
         """
-        if num_cards > len(self.cards):
+
+        if num_cards > len(self.cards) and not reshuffle:
             raise ValueError("Not enough cards in the deck to deal.")
 
         dealt_cards = self.cards[:num_cards]
         self.cards = self.cards[num_cards:]
+
+        # If there are not enough cards to deal and reshuffling is allowed, reinitialize the deck and deal the remaining cards.
+        if len(dealt_cards) < num_cards and reshuffle:
+            self.__init__(True)  # Reinitialize the deck and shuffle it
+            dealt_cards += self.deal(num_cards - len(dealt_cards), False)  # Deal the remaining cards without reshuffling again
 
         return dealt_cards
