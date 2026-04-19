@@ -1,37 +1,43 @@
 from enum import Enum
 import random
 
+
 class Suit(Enum):
     """
     The suit of a playing card, which can be Hearts, Diamonds, Clubs, or Spades.
     """
-    HEARTS = '♥️'
-    DIAMONDS = '♦️'
-    CLUBS = '♣️'
-    SPADES = '♠️'
+
+    HEARTS = "♥️"
+    DIAMONDS = "♦️"
+    CLUBS = "♣️"
+    SPADES = "♠️"
+
 
 class Rank(Enum):
     """
     The rank of a playing card, which can be a number (2-10) or a face card (Jack, Queen, King, Ace).
     """
-    TWO = '2'
-    THREE = '3'
-    FOUR = '4'
-    FIVE = '5'
-    SIX = '6'
-    SEVEN = '7'
-    EIGHT = '8'
-    NINE = '9'
-    TEN = '10'
-    JACK = 'J'
-    QUEEN = 'Q'
-    KING = 'K'
-    ACE = 'A'
+
+    TWO = "2"
+    THREE = "3"
+    FOUR = "4"
+    FIVE = "5"
+    SIX = "6"
+    SEVEN = "7"
+    EIGHT = "8"
+    NINE = "9"
+    TEN = "10"
+    JACK = "J"
+    QUEEN = "Q"
+    KING = "K"
+    ACE = "A"
+
 
 class Card:
     """
     A playing card with a suit and rank.
     """
+
     suit: Suit
     rank: Rank
 
@@ -50,6 +56,7 @@ class Deck:
     """
     A standard deck of 52 playing cards, consisting of 4 suits (Hearts, Diamonds, Clubs, Spades) and 13 ranks (2-10, Jack, Queen, King, Ace).
     """
+
     cards: list[Card]
 
     def __init__(self, shuffle: bool = True):
@@ -85,6 +92,8 @@ class Deck:
         # If there are not enough cards to deal and reshuffling is allowed, reinitialize the deck and deal the remaining cards.
         if len(dealt_cards) < num_cards and reshuffle:
             self.__init__(True)  # Reinitialize the deck and shuffle it
-            dealt_cards += self.deal(num_cards - len(dealt_cards), False)  # Deal the remaining cards without reshuffling again
+            dealt_cards += self.deal(
+                num_cards - len(dealt_cards), False
+            )  # Deal the remaining cards without reshuffling again
 
         return dealt_cards

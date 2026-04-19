@@ -1,4 +1,6 @@
 from casino.player import Player
+from utils.terminal import draw_bg, term
+
 
 class Game:
     """
@@ -6,16 +8,17 @@ class Game:
     """
 
     def start(self):
-        ...
+        print(term.clear())
+        draw_bg()
 
     def run(self):
         raise NotImplementedError("Subclasses must implement the run() method.")
 
-    def end(self):
-        ...
+    def end(self): ...
 
     def show_rules(self):
         raise NotImplementedError("Subclasses must implement the show_rules() method.")
+
 
 class MultiplayerGame(Game):
     """
