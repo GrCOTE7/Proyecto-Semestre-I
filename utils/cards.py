@@ -1,5 +1,6 @@
 from enum import Enum
 import random
+from dataclasses import dataclass
 
 
 class Suit(Enum):
@@ -33,6 +34,7 @@ class Rank(Enum):
     ACE = "A"
 
 
+@dataclass
 class Card:
     """
     A playing card with a suit and rank.
@@ -41,15 +43,18 @@ class Card:
     suit: Suit
     rank: Rank
 
-    def __init__(self, suit: Suit, rank: Rank):
-        self.suit = suit
-        self.rank = rank
-
     def __str__(self):
         return f"{self.rank.value}{self.suit.value}"
 
-    def __repr__(self):
-        return f"Card('{self.suit}', '{self.rank}')"
+    @property
+    def value(self) -> int:
+        """Return the value of the card for games like Blackjack."""
+        if self.rank in [Rank.JACK, Rank.QUEEN, Rank.KING]:
+            return 10
+        elif self.rank == Rank.ACE:
+            return 11  # Ace can also be worth 1, but that logic is typically handled in the game rules
+        else:
+            return int(self.rank.value)
 
 
 class Deck:
