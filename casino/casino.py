@@ -1,6 +1,7 @@
 from casino.player import Player
-from casino.games import Game
 from casino.games.blackjack import Blackjack
+from casino.games.poker import Poker
+from casino.games import Game
 
 from utils import terminal
 from utils.terminal import term, BG_COLOR
@@ -12,27 +13,20 @@ class Casino:
     """
 
     name: str
-    players: list[Player]
+    player: Player
     games: list[Game]
     games_area: int
     profile_area: int
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, player: Player):
         self.name = name
-        self.players = []
-        self.games = [Blackjack]
+        self.player = player
+        self.games = [
+            Blackjack,
+            Poker,
+        ]
 
         self.games_area = term.width * 2 // 3  # The area where games are listed
-
-    def add_player(self, player: Player):
-        self.players.append(player)
-
-    def remove_player(self, player: Player):
-        if player in self.players:
-            self.players.remove(player)
-
-    def list_players(self):
-        return [player.name for player in self.players]
 
     def menu(self):
         while True:
@@ -64,7 +58,9 @@ class Casino:
                 if choice.isdigit():
                     game_index = int(choice) - 1
                     if 0 <= game_index < len(self.games):
-                        selected_game: Game = self.games[game_index](self.players[0])
+                        print(term.clear())
+
+                        selected_game: Game = self.games[game_index](self.player)
                         selected_game.start()
                         selected_game.run()
                         selected_game.end()
@@ -76,19 +72,27 @@ class Casino:
         return f"Casino: {self.name}, Players: {', '.join(self.list_players())}"
 
     def games_area_menu(self):
+        game_strings = [f"{i+1}. {g.__name__}" for i, g in enumerate(self.games)]
+        max_game_len = max(len(s) for s in game_strings) if game_strings else 0
+
         with term.location(0, 2):
             print(
                 BG_COLOR
                 + term.center(
                     f"Welcome to {self.name} Casino!", self.games_area, fillchar="-"
-                )
+                ),
+                end="",
             )
-            print("")
+            print(term.move_down)
             print(BG_COLOR + term.center("Available games:", self.games_area))
-            for idx, game in enumerate(self.games, start=1):
-                print(
-                    BG_COLOR + term.center(f"{idx}. {game.__name__}", self.games_area)
-                )
+
+            for s in game_strings:
+                # First, pad the string to the max length (left-aligned)
+                padded_game = s.ljust(max_game_len)
+
+                # Second, center that full-width string in the games_area
+                print(BG_COLOR + term.center(padded_game, self.games_area), end="")
+                print(term.move_down, end="")
 
     def profile_area_menu(self):
         profile_area = term.width - self.games_area
@@ -101,7 +105,5 @@ class Casino:
         with term.location(self.games_area, 4):
             print(
                 BG_COLOR
-                + term.center(
-                    f"{self.players[0].name}: ${self.players[0].money}", profile_area
-                )
+                + term.center(f"{self.player.name}: ${self.player.money}", profile_area)
             )
