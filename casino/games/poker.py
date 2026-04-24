@@ -156,8 +156,8 @@ class Poker(Game):
         call_count = 0
         community_cards_revealed = 0
         while True:
-            # Skip inactive players (those who have folded)
-            if self.current_player not in self.active_players:
+            # Skip inactive players (those who have folded) or those whove gone all in
+            if self.current_player not in self.active_players or self.current_player.player.money == 0:
                 self.advance_turn()
                 self.update_screen(community_cards_revealed)
                 continue
@@ -182,7 +182,7 @@ class Poker(Game):
                         # based on the previous valid raise.
                         if (
                             new_bet == self.player.player.money
-                            and new_bet < self.current_bet + self.min_raise()
+                            and new_bet < self.current_bet + self.min_raise
                         ):
                             self.raise_bet(new_bet)
                             call_count = 0
@@ -193,16 +193,43 @@ class Poker(Game):
                 self.show_hint(f"{self.current_player.player.name} is thinking...")
                 time.sleep(
                     random.uniform(1.5, 3.0)
-                )  # Simulate thinking time for the CPU
-                # For simplicity, all other players just call the current bet
-                self.pot += self.current_bet
-                self.current_player.player.money -= self.current_bet
-                call_count += 1
+                )  
+                
+                cpu_action = Poker.cpu_choice()
+
+                match cpu_action:
+                    case Action.CALL:
+                        # Call the current bet
+                        self.pot += self.current_bet
+                        self.current_player.player.money -= self.current_bet
+                        call_count += 1
+
+                        self.show_hint(f"{self.current_player.player.name} calls")
+                    case Action.RAISE:
+                            min_bet = self.current_bet + self.min_raise
+                            max_bet = self.current_player.player.money
+
+                            bet = round(random.uniform(min_bet, max_bet), 2)
+
+                            self.raise_bet(bet)
+                            self.current_player.player.money -= bet
+
+                            self.show_hint(f"{self.current_player.player.name} raises to {bet}$")
+                    case Action.FOLD:
+                        self.active_players.remove(self.current_player)
+                        self.show_hint(f"{self.current_player.player.name} folds")
+                    
+                time.sleep(2)
 
             if call_count >= len(self.active_players):
                 # Move to the next stage of the hand after everyone has called
                 call_count = 0
-                community_cards_revealed += 1
+
+                # Reveal the river after first hand and then reveal one by one
+                if community_cards_revealed == 0:
+                    community_cards_revealed = 3
+                else:
+                    community_cards_revealed += 1
 
                 if community_cards_revealed == 5 or len(self.active_players) <= 1:
                     # All community cards are revealed, end the hand
@@ -481,6 +508,7 @@ class Poker(Game):
         self.print_player_data()
         self.print_game_area(community_cards)
 
+    @staticmethod
     def print_hand(x: int, y: int, cards_str: str, label: str, bold: bool = False):
         """
         Utility function to print a player's hand at a specific location, with the cards and a label
@@ -521,7 +549,7 @@ class Poker(Game):
         """
         amount = ""
 
-        min_bet = self.current_bet + self.min_raise()
+        min_bet = self.current_bet + self.min_raise
         max_bet = self.player.player.money
 
         msg = f"Enter new bet (min: ${min_bet:.2f} max: ${max_bet:.2f}):"
@@ -554,10 +582,12 @@ class Poker(Game):
         self.last_raise = new_bet - self.current_bet
         self.current_bet = new_bet
 
+    @property
     def min_raise(self) -> float:
         """Returns the minimum raise amount based on the last raise."""
         return self.last_raise
 
+    @staticmethod
     def evaluate_hand(hand: list[Card]) -> tuple[HandRank, list[CardRank]]:
         """
         Evaluates a 5-card poker hand and returns a tuple containing the hand rank (e.g., pair, flush, straight)
@@ -634,6 +664,7 @@ class Poker(Game):
 
         return (hand_type, score_sort)
 
+    @staticmethod
     def best_hand(
         player_cards: list[Card], community_cards: list[Card]
     ) -> tuple[HandRank, list[CardRank]]:
@@ -666,3 +697,7 @@ class Poker(Game):
             raise ValueError("Could not evaluate best hand")
 
         return best_score
+
+    @staticmethod
+    def cpu_choice() -> Action:
+        return random.choice([Action.FOLD, Action.CALL, Action.RAISE])
