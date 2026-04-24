@@ -68,9 +68,6 @@ class Casino:
                     print(term.clear)
                     break
 
-    def __str__(self):
-        return f"Casino: {self.name}, Players: {', '.join(self.list_players())}"
-
     def games_area_menu(self):
         game_strings = [f"{i+1}. {g.__name__}" for i, g in enumerate(self.games)]
         max_game_len = max(len(s) for s in game_strings) if game_strings else 0
@@ -105,5 +102,5 @@ class Casino:
         with term.location(self.games_area, 4):
             print(
                 BG_COLOR
-                + term.center(f"{self.player.name}: ${self.player.money}", profile_area)
+                + term.center(f"{self.player.name}: ${self.player.money:.2f}", profile_area)
             )
