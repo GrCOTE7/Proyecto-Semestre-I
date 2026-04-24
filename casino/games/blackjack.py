@@ -165,6 +165,7 @@ class Blackjack(Game):
             with term.cbreak():
                 term.inkey()
 
+    @staticmethod
     def evaluate_hand(hand: list[Card]) -> int:
         """Calculate the total value of a hand of cards, accounting for Aces."""
         value = 0
@@ -202,6 +203,7 @@ class Blackjack(Game):
             term.width * 2 // 3, term.height // 2 - 2, dealer_cards_str, "Dealer"
         )
 
+    @staticmethod
     def draw_hand(x: int, y: int, cards_str: str, label: str):
         # 1. Draw the cards
         with term.location(x, y):

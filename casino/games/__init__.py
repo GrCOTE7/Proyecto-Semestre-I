@@ -59,6 +59,7 @@ class Game:
             print(BG_COLOR + "-" * self.hint_area.width, end="")
             print(BG_COLOR + term.center(prompt, self.hint_area.width), end="")
 
+    @staticmethod
     def clear_area(area: Area):
         """Clears the specified area on the terminal screen by printing spaces over it."""
         with term.location(area.x, area.y):
@@ -80,7 +81,7 @@ class MultiplayerGame(Game):
         Initialize the multiplayer game with a name, a list of human players, and a specified number of CPU opponents.
         """
         super().__init__(name)
-        self.players = players
+        self.players = [*players]
         self.cpu_players = [Player(f"CPU {i+1}") for i in range(cpu_players)]
 
     def cpu_choice(self):
