@@ -21,6 +21,7 @@ class Blackjack(Game):
     bet: float
 
     def __init__(self, player: Player):
+        super().__init__("Blackjack")
         self.dealer = BlackJackPlayer(Player("Dealer"), [])
         self.player = BlackJackPlayer(player, [])
         self.deck = Deck(True)
@@ -33,16 +34,16 @@ class Blackjack(Game):
 
         while True:
             with term.hidden_cursor():
-                with term.location(0, term.height // 2):
+                with term.location(0, self.game_area.height // 2):
                     prompt = (
                         term.center(
                             f"Enter your bet amount (max {self.player.player.money}$): {f'${bet}' if bet else ''}",
-                            term.width,
+                            self.game_area.width,
                         )
                         if not bet_overflow
                         else term.center(
                             f"Bet exceeds available money! Enter a valid bet amount (max {self.player.player.money}$): {f'${bet}' if bet else ''}",
-                            term.width,
+                            self.game_area.width,
                         )
                     )
 
@@ -67,12 +68,8 @@ class Blackjack(Game):
                             self.player.player.money -= self.bet
                             break
 
-        print(term.clear(), end="")
-        draw_bg()
-        with term.location(0, term.height - 2):
-            hint = "Hit (h) or Stand (s)"
-            print(BG_COLOR + "-" * term.width)
-            print(BG_COLOR + term.center(hint, term.width))
+        Game.clear_area(self.game_area)
+        self.show_hint("Press 'H' to Hit or 'S' to Stand.")
 
     def run(self):
         player_busts = False
