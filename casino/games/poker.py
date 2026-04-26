@@ -129,9 +129,9 @@ class Poker(Game):
         self.community_cards = []
         self.active_players = self.all_players
         self.pot = 0
-        self.current_bet = 0
         self.last_raise = 0
         self.big_blind = self.player.player.money * 0.05
+        self.current_bet = self.big_blind
 
         for player in self.all_players:
             player.cards = self.deck.deal(2)
@@ -156,8 +156,33 @@ class Poker(Game):
         call_count = 0
         community_cards_revealed = 0
         while True:
+            if (
+                call_count >= len(self.active_players)
+                or all(player.player.money == 0 for player in self.active_players)
+                or len(self.active_players) == 1
+            ):
+                # Move to the next stage of the hand after everyone has called
+                call_count = 0
+
+                # Reveal the flop after first hand and then reveal one by one
+                if community_cards_revealed == 0:
+                    community_cards_revealed = 3
+                else:
+                    community_cards_revealed += 1
+
+                if (
+                    community_cards_revealed == 5
+                    or len(self.active_players) == 1
+                    or all(player.player.money == 0 for player in self.active_players)
+                ):
+                    # All community cards are revealed, only one player remains or everyone is all-in, end the hand
+                    break
+
             # Skip inactive players (those who have folded) or those whove gone all in
-            if self.current_player not in self.active_players or self.current_player.player.money == 0:
+            if (
+                self.current_player not in self.active_players
+                or self.current_player.player.money == 0
+            ):
                 self.advance_turn()
                 self.update_screen(community_cards_revealed)
                 continue
@@ -169,10 +194,22 @@ class Poker(Game):
                 match action:
                     case Action.FOLD:
                         self.active_players.remove(self.current_player)
+
+                        self.show_hint(f"{self.current_player.player.name} folds")
                     case Action.CALL:
-                        self.pot += self.current_bet
-                        self.current_player.player.money -= self.current_bet
-                        call_count += 1
+                        payment = min(
+                            self.current_bet, self.current_player.player.money
+                        )
+
+                        self.pot += payment
+                        self.current_player.player.money -= payment
+
+                        # Only count as a call if the player is actually calling the current bet,
+                        # and not just going all-in with a smaller amount
+                        if payment == self.current_bet:
+                            call_count += 1
+
+                        self.show_hint(f"{self.current_player.player.name} calls")
                     case Action.RAISE:
                         new_bet = self.input_raise()
                         self.pot += new_bet
@@ -182,72 +219,103 @@ class Poker(Game):
                         # based on the previous valid raise.
                         if (
                             new_bet == self.player.player.money
-                            and new_bet < self.current_bet + self.min_raise
+                            and new_bet >= self.current_bet + self.min_raise
                         ):
                             self.raise_bet(new_bet)
                             call_count = 0
 
                         self.current_player.player.money -= new_bet
+
+                        if self.current_player.player.money == 0:
+                            self.show_hint(
+                                f"{self.current_player.player.name} goes all-in!"
+                            )
+                        else:
+                            self.show_hint(
+                                f"{self.current_player.player.name} raises to ${new_bet:.2f}"
+                            )
             else:
                 # CPU action
                 self.show_hint(f"{self.current_player.player.name} is thinking...")
-                time.sleep(
-                    random.uniform(1.5, 3.0)
-                )  
-                
-                cpu_action = Poker.cpu_choice()
+                time.sleep(random.uniform(1.5, 3.0))
+
+                cpu_action = self.cpu_choice(self.current_player)
 
                 match cpu_action:
                     case Action.CALL:
                         # Call the current bet
-                        self.pot += self.current_bet
-                        self.current_player.player.money -= self.current_bet
-                        call_count += 1
+                        payment = min(
+                            self.current_bet, self.current_player.player.money
+                        )
+
+                        self.pot += payment
+                        self.current_player.player.money -= payment
+
+                        # Only count as a call if the player is actually calling the current bet,
+                        # and not just going all-in with a smaller amount
+                        if payment == self.current_bet:
+                            call_count += 1
 
                         self.show_hint(f"{self.current_player.player.name} calls")
                     case Action.RAISE:
-                            min_bet = self.current_bet + self.min_raise
-                            max_bet = self.current_player.player.money
+                        min_bet = self.current_bet + self.min_raise
+                        max_bet = self.current_player.player.money
 
-                            bet = round(random.uniform(min_bet, max_bet), 2)
+                        # Clamp the random bet between the minimum raise and the maximum the CPU can afford, and round to 2 decimals
+                        bet = min(
+                            round(random.triangular(min_bet, max_bet, min_bet), 2),
+                            max_bet,
+                        )
 
+                        self.current_player.player.money -= bet
+
+                        if bet >= min_bet:
+                            # Only update the current bet and last raise if the raise is valid (meets the minimum raise requirement),
+                            # or if the player is going all-in with a raise that is greater than the minimum
+                            # raise. If the player is going all-in with a raise that is less than the minimum raise, we allow it
+                            # but we don't update the current bet or last raise, so that the next player's
+                            # minimum raise is still based on the previous valid raise.
                             self.raise_bet(bet)
-                            self.current_player.player.money -= bet
+                            call_count = 0
 
-                            self.show_hint(f"{self.current_player.player.name} raises to {bet}$")
+                        if self.current_player.player.money == 0:
+                            self.show_hint(
+                                f"{self.current_player.player.name} goes all-in!"
+                            )
+                        else:
+                            self.show_hint(
+                                f"{self.current_player.player.name} raises to {bet}$"
+                            )
                     case Action.FOLD:
                         self.active_players.remove(self.current_player)
                         self.show_hint(f"{self.current_player.player.name} folds")
-                    
-                time.sleep(2)
-
-            if call_count >= len(self.active_players):
-                # Move to the next stage of the hand after everyone has called
-                call_count = 0
-
-                # Reveal the river after first hand and then reveal one by one
-                if community_cards_revealed == 0:
-                    community_cards_revealed = 3
-                else:
-                    community_cards_revealed += 1
-
-                if community_cards_revealed == 5 or len(self.active_players) <= 1:
-                    # All community cards are revealed, end the hand
-                    break
 
             self.advance_turn()
             self.update_screen(community_cards_revealed)
 
+            time.sleep(2)
+
+        # The best hand of each active player is evaluated using their hole cards and the community cards,
+        # and the winner(s) is determined based on who has the highest hand.
         final_hands: list[tuple[PokerPlayer, tuple[HandRank, list[CardRank]]]] = [
             (player, Poker.best_hand(player.cards, self.community_cards))
             for player in self.active_players
         ]
 
-        winners = [
-            player
-            for player, (_, score) in final_hands
-            if score == max(score for _, score in final_hands)
-        ]
+        print(
+            [
+                f"{player.player.name}: {hand[0].name}, tie-breaker: {hand[1]}"
+                for player, hand in final_hands
+            ]
+        )
+        time.sleep(10)
+
+        # 1. Find the maximum score achieved at the table
+        # We use the second element of the tuple (the hand score) for comparison
+        max_score = max(final_hands, key=lambda x: x[1])[1]
+
+        # 2. Identify all players who hold that max score
+        winners = [player for player, score in final_hands if score == max_score]
 
         if winners:
             split_pot = self.pot / len(winners)
@@ -416,7 +484,7 @@ class Poker(Game):
             print(
                 BG_COLOR
                 + term.center(
-                    f"Pot: ${self.pot:.2f}",
+                    f"Current bet: ${self.current_bet:.2f}",
                     self.player_data_area.width,
                     fillchar=BG_COLOR + " ",
                 ),
@@ -427,7 +495,7 @@ class Poker(Game):
             print(
                 BG_COLOR
                 + term.center(
-                    f"Current bet: ${self.current_bet:.2f}",
+                    f"Pot: ${self.pot:.2f}",
                     self.player_data_area.width,
                     fillchar=BG_COLOR + " ",
                 ),
@@ -698,6 +766,16 @@ class Poker(Game):
 
         return best_score
 
-    @staticmethod
-    def cpu_choice() -> Action:
+    def cpu_choice(self, cpu: PokerPlayer) -> Action:
+        """
+        Determines the CPU's action (fold, call, or raise) based on a simple heuristic that considers the current bet and the CPU's money.
+        The CPU will randomly choose to fold, call, or raise, but it will only choose to raise if it can afford at
+        least the minimum raise.
+        """
+        min_bet = self.current_bet + self.min_raise
+
+        if cpu.player.money < min_bet:
+            # If the CPU can't afford to call the current bet, it will fold or go all-in (which is treated as a raise)
+            return random.choice([Action.FOLD, Action.RAISE])
+
         return random.choice([Action.FOLD, Action.CALL, Action.RAISE])
