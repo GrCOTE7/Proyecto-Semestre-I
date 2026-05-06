@@ -32,8 +32,8 @@ def test_event_notification():
     game = DummyGame(Player("Test Player"))
     events_triggered = []
 
-    def on_phase_change(event, new_phase):
-        events_triggered.append((event, new_phase))
+    def on_phase_change(new_phase):
+        events_triggered.append((GenericEvent.PHASE_CHANGE, new_phase))
 
     game.subscribe(GenericEvent.PHASE_CHANGE, on_phase_change)
     game.change_phase(DummyPhase.PHASE_ONE)

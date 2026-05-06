@@ -64,8 +64,8 @@ def test_dealer_play():
 
     events = []
 
-    def on_dealer_hit(event, _):
-        events.append(event)
+    def on_dealer_hit(_):
+        events.append(BlackjackEvent.DEALER_HIT)
 
     game.subscribe(BlackjackEvent.DEALER_HIT, on_dealer_hit)
 
@@ -127,8 +127,10 @@ def test_player_wins():
     game.accept_bet(bet)
     events = []
 
-    def on_player_win(event, player_cards, dealer_cards):
-        events.append((event, player_cards, dealer_cards))
+    def on_player_win(winner, payout, player_cards, dealer_cards):
+        events.append(
+            (BlackjackEvent.PLAYER_WINS, winner, payout, player_cards, dealer_cards)
+        )
 
     game.subscribe(BlackjackEvent.PLAYER_WINS, on_player_win)
 
@@ -141,8 +143,8 @@ def test_player_wins():
 
     assert len(events) == 1
     assert events[0][0] == BlackjackEvent.PLAYER_WINS
-    assert events[0][1] == game.player.cards
-    assert events[0][2] == game.dealer.cards
+    assert events[0][3] == game.player.cards
+    assert events[0][4] == game.dealer.cards
 
 
 def test_player_wins_blackjack():
@@ -152,8 +154,10 @@ def test_player_wins_blackjack():
     game.accept_bet(bet)
     events = []
 
-    def on_player_win(event, player_cards, dealer_cards):
-        events.append((event, player_cards, dealer_cards))
+    def on_player_win(winner, payout, player_cards, dealer_cards):
+        events.append(
+            (BlackjackEvent.PLAYER_WINS, winner, payout, player_cards, dealer_cards)
+        )
 
     game.subscribe(BlackjackEvent.PLAYER_WINS, on_player_win)
 
@@ -166,8 +170,8 @@ def test_player_wins_blackjack():
 
     assert len(events) == 1
     assert events[0][0] == BlackjackEvent.PLAYER_WINS
-    assert events[0][1] == game.player.cards
-    assert events[0][2] == game.dealer.cards
+    assert events[0][3] == game.player.cards
+    assert events[0][4] == game.dealer.cards
 
 
 def test_dealer_wins():
@@ -177,8 +181,8 @@ def test_dealer_wins():
     game.accept_bet(bet)
     events = []
 
-    def on_dealer_win(event, player_cards, dealer_cards):
-        events.append((event, player_cards, dealer_cards))
+    def on_dealer_win(winner, player_cards, dealer_cards):
+        events.append((BlackjackEvent.DEALER_WINS, winner, player_cards, dealer_cards))
 
     game.subscribe(BlackjackEvent.DEALER_WINS, on_dealer_win)
 
@@ -191,5 +195,5 @@ def test_dealer_wins():
 
     assert len(events) == 1
     assert events[0][0] == BlackjackEvent.DEALER_WINS
-    assert events[0][1] == game.player.cards
-    assert events[0][2] == game.dealer.cards
+    assert events[0][2] == game.player.cards
+    assert events[0][3] == game.dealer.cards
