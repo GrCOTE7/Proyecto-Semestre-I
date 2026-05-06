@@ -1,7 +1,7 @@
-from enum import IntEnum
+from enum import Enum
 
 
-class BlackjackEvent(IntEnum):
+class BlackjackEvent(Enum):
     """
     Enum to represent the different events that can occur during a Blackjack game,
     which can be used to trigger specific actions or updates in the game state or user interface.
@@ -14,14 +14,16 @@ class BlackjackEvent(IntEnum):
     DEALER_HIT = 2
     """Event triggered when the dealer hits (takes another card). The callback will include the dealer's cards."""
     PLAYER_WINS = 3
-    """Event triggered when the player wins the round. The callback will include the player's hand and the dealer's hand."""
+    """Event triggered when the player wins the round. The callback will include the winner object, the payout amount, the player's hand and the dealer's hand."""
     DEALER_WINS = 4
-    """Event triggered when the dealer wins the round. The callback will include the player's hand and the dealer's hand."""
+    """Event triggered when the dealer wins the round. The callback will include the winner object, the player's hand and the dealer's hand."""
     TIE = 5
     """Event triggered when the round ends in a tie. The callback will include the player's hand and the dealer's hand."""
+    PLAYER_BETS = 6
+    """Event triggered when the player places a bet. The callback will include the bet amount."""
 
 
-class BlackjackPhase(IntEnum):
+class BlackjackPhase(Enum):
     """Enum to represent the different phases of a Blackjack game, which can be used to manage game flow and logic."""
 
     WAITING_FOR_BET = 0

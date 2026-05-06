@@ -1,7 +1,7 @@
-from enum import IntEnum
+from enum import Enum
 
 
-class GenericEvent(IntEnum):
+class GenericEvent(Enum):
     """A generic event type that can be used across different games to represent common events."""
 
     PHASE_CHANGE = 0
