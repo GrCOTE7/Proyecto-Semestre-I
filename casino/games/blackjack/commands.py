@@ -32,3 +32,15 @@ class StandCommand(Command):
 
     def execute(self):
         self.game.dealer_play()
+
+
+class RequestBetCommand(Command):
+    """Command to handle the player's decision to place a bet before the round starts."""
+
+    game: Blackjack
+
+    def __init__(self, game: Blackjack):
+        super().__init__(game, "Place Bet: Place your bet for the round.")
+
+    def execute(self):
+        self.game.request_bet()

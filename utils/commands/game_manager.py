@@ -21,3 +21,7 @@ class GameManager(ABC):
         cmd = self.commands.get(user_input.upper())
         if cmd:
             cmd.execute()
+
+    def get_available_commands(self) -> dict[str, Command]:
+        """Returns the available commands for the current game state."""
+        return self.commands
