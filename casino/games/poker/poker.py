@@ -489,6 +489,15 @@ class Poker(Game):
             self.current_phase_idx += 1
             self.call_count = 0
 
+            # Deal the corresponding community cards of each phase
+            match self.current_phase:
+                case PokerPhase.FLOP:
+                    self.community_cards += self.deck.deal(3)
+                case PokerPhase.TURN | PokerPhase.RIVER:
+                    self.community_cards += self.deck.deal(1)
+
+        self.change_phase(self.current_phase)
+
     def player_call(self, player: PokerPlayer):
         """Handles a player calling the current bet, including updating the pot and the player's money."""
         payment = min(self.current_bet, player.player.money)
