@@ -44,6 +44,10 @@ class Game(EventListener):
         """Returns the currently active player in the game."""
         pass
 
+    def start(self):
+        """Starts the game loop."""
+        pass
+
     def change_phase(self, new_phase: Enum):
         """Changes the current game phase and notifies listeners of the phase change."""
         self.game_phase = new_phase

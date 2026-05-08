@@ -1,18 +1,23 @@
 from casino.games.blackjack.renderer import BlackjackTerminalRenderer
 from casino.player import Player
 from casino.games.blackjack.blackjack import Blackjack, BlackjackManager
-from casino.games.poker import Poker
+from casino.games.poker.poker import Poker, PokerManager
+from casino.games.poker.renderer import PokerRenderer
 from utils.commands.game_manager import GameManager
+from casino.games import Game
 from dataclasses import dataclass
 from utils.renderer import Renderer
 from .games.generic_events import GenericEvent
+
+from typing import Type
 
 
 @dataclass
 class CasinoGame:
     name: str
-    manager: GameManager
-    renderer: Renderer
+    game: Type[Game]
+    manager: Type[GameManager]
+    renderer: Type[Renderer]
 
 
 class Casino:
@@ -30,15 +35,16 @@ class Casino:
         self.player = player
         self.game_active = False
 
-        blackjack = Blackjack(player)
-
         self.games = [
             CasinoGame(
                 name="Blackjack",
-                manager=BlackjackManager(blackjack),
-                renderer=BlackjackTerminalRenderer(blackjack),
+                game=Blackjack,
+                manager=BlackjackManager,
+                renderer=BlackjackTerminalRenderer,
             ),
-            # Poker,
+            CasinoGame(
+                name="Poker", game=Poker, manager=PokerManager, renderer=PokerRenderer
+            ),
         ]
 
     def menu(self):
@@ -57,17 +63,24 @@ class Casino:
             try:
                 selected_game = self.games[int(choice) - 1]
 
-                selected_game.manager.game.subscribe(
-                    GenericEvent.GAME_END, self.end_game
-                )
+                # The actual instances of the games are created here, after the player has made their choice.
+                # This allows us to subscribe to game events before the game loop starts.
+                game = selected_game.game(player=self.player)
+                _ = selected_game.renderer(game)
+                manager = selected_game.manager(game)
+
+                game.subscribe(GenericEvent.GAME_END, self.end_game)
+
+                # Run game setup code before accepting player input
+                game.start()
 
                 self.game_active = True
                 while self.game_active:
-                    available_commands = selected_game.manager.get_available_commands()
+                    available_commands = manager.get_available_commands()
                     for key, cmd in available_commands.items():
                         print(f"{key}: {cmd.description}")
 
-                    selected_game.manager.handle_input(input("Enter your action: "))
+                    manager.handle_input(input("Enter your action: "))
             except (IndexError, ValueError):
                 print("Invalid choice. Please try again.")
 

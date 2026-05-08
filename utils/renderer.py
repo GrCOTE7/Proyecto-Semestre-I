@@ -10,7 +10,9 @@ class Renderer(ABC):
     Any class inheriting from Renderer must subscribe to game events in the __init__ method and implement the render method to update the game display based on the current game state.
     """
 
+    game: Game
+
     @abstractmethod
     def __init__(self, game: Game):
         """Initializes the renderer and subscribes to relevant game events."""
-        pass
+        self.game = game

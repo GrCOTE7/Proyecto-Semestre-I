@@ -1,4 +1,4 @@
-from casino.games import Game, Area
+from casino.games import Game
 from utils.terminal import term, BG_COLOR
 from utils.cards import Deck, Card, Rank
 from casino.player import Player
@@ -6,8 +6,13 @@ from dataclasses import dataclass
 import time
 import random
 from itertools import combinations
-from enum import Enum, IntEnum
+from enum import Enum
 from collections import Counter
+from utils.commands.game_manager import GameManager
+from .phases import PokerPhase
+from .events import PokerEvent
+from . import commands
+from utils.commands.command import Command
 
 
 @dataclass
@@ -16,13 +21,7 @@ class PokerPlayer:
     cards: list[Card]
 
 
-class Action(Enum):
-    FOLD = "f"
-    CALL = "c"
-    RAISE = "r"
-
-
-class HandRank(IntEnum):
+class HandRank(Enum):
     HIGH_CARD = 0
     PAIR = 1
     TWO_PAIR = 2
@@ -35,7 +34,7 @@ class HandRank(IntEnum):
     ROYAL_FLUSH = 9
 
 
-class CardRank(IntEnum):
+class CardRank(Enum):
     TWO = 2
     THREE = 3
     FOUR = 4
@@ -49,6 +48,12 @@ class CardRank(IntEnum):
     QUEEN = 12
     KING = 13
     ACE = 14
+
+
+class PokerManager(GameManager):
+    def __init__(self, game: Poker):
+        super().__init__("Poker")
+        self.game = game
 
 
 class Poker(Game):
@@ -67,8 +72,11 @@ class Poker(Game):
     active_players: list[PokerPlayer]
 
     # The index of the player whose turn it is currently
+    # Using an index instead of a direct reference to the player object to make it easier to cycle through players in turn order.
     current_player_idx: int
     # The index of the dealer (the player who is currently the dealer, which rotates each hand)
+    # Using an index instead of a direct reference to the player object to make it easier
+    # to rotate the dealer each hand and to determine who pays the small and big blinds based on the dealer's position.
     dealer_idx: int
 
     # The big blind amount (for simplicity, we set it as a percentage of the player's money)
@@ -82,6 +90,20 @@ class Poker(Game):
     # A player must raise by at least the amount of the previous bet or raise in that same round.
     last_raise: float
 
+    # The different phases of a poker hand, which determine the flow of the game and when community cards are revealed.
+    # The game starts in the PRE_FLOP phase, then moves to FLOP, TURN, and RIVER as community cards
+    # are revealed and betting rounds are completed.
+    phases: list[PokerPhase] = [
+        PokerPhase.PRE_FLOP,
+        PokerPhase.FLOP,
+        PokerPhase.TURN,
+        PokerPhase.RIVER,
+    ]
+    current_phase_idx: int
+
+    # A counter to track how many players have called in the current betting round, used to determine when to move to the next phase.
+    call_count: int
+
     def __init__(self, player: Player):
         super().__init__("Poker")
 
@@ -92,38 +114,41 @@ class Poker(Game):
         self.deck = Deck()
         self.community_cards = []
 
-        self.game_area = Area(
-            0,
-            self.header_area.y + self.header_area.height,
-            term.width * 2 // 3,
-            term.height - self.header_area.height - self.hint_area.height,
-        )
-        self.player_data_area = Area(
-            term.width * 2 // 3,
-            self.header_area.y + self.header_area.height,
-            term.width - term.width * 2 // 3,
-            term.height - self.header_area.height - self.hint_area.height,
-        )
-
         self.big_blind = player.money * 0.05
         self.pot = 0
 
         self.current_bet = self.big_blind
         self.last_raise = self.big_blind
 
+        self.current_phase_idx = 0
+        self.call_count = 0
+
     @property
     def all_players(self):
         """Returns a list of all players in the game, with the human player first followed by the CPUs."""
         return [self.player] + self.cpus
 
+    @property
+    def dealer(self) -> PokerPlayer:
+        """Returns the current dealer."""
+        return self.all_players[self.dealer_idx]
+
+    @property
+    def active_player(self) -> PokerPlayer:
+        """Returns the current player."""
+        return self.all_players[self.current_player_idx]
+
+    @property
+    def current_phase(self) -> PokerPhase:
+        """Returns the current phase of the game."""
+        return self.phases[self.current_phase_idx]
+
+    @property
+    def min_raise(self) -> float:
+        """Returns the minimum raise amount based on the last raise."""
+        return self.last_raise
+
     def start(self):
-        super().start()
-
-        self.print_player_data()
-        self.choose_dealer()
-        self.current_player_idx = (self.dealer_idx + 1) % len(self.all_players)
-
-    def run(self):
         # Reset all game state for the new hand
         self.deck = Deck()
         self.community_cards = []
@@ -132,25 +157,19 @@ class Poker(Game):
         self.last_raise = 0
         self.big_blind = self.player.player.money * 0.05
         self.current_bet = self.big_blind
+        self.current_phase_idx = 0
+        self.call_count = 0
 
-        for player in self.all_players:
-            player.cards = self.deck.deal(2)
+        self.change_phase(PokerPhase.CHOOSING_DEALER)
+        self.choose_dealer()
+        self.change_phase(PokerPhase.DEALING_CARDS)
+        self.deal_cards()
+        self.pay_blinds()
+        self.change_phase(PokerPhase.PRE_FLOP)
+        self.cpu_betting_round()
 
+    def run(self):
         self.community_cards = self.deck.deal(5)
-        self.print_game_area()
-
-        # Post blinds at beggining of hand
-        for i in range(2):
-            blind = self.big_blind / (2 - i + 1)
-            self.current_player.player.money -= blind  # Small blind is half the big blind, and the first player to act pays it
-            self.pot += blind
-
-            self.show_hint(
-                f"{self.current_player.player.name} pays {'small' if i == 0 else 'big'} blind of ${blind:.2f}"
-            )
-            self.advance_turn()
-            self.update_screen()
-            time.sleep(2)  # Pause a moment between each blind for better visualization
 
         # To track how many players have called in the current betting round
         call_count = 0
@@ -353,293 +372,163 @@ class Poker(Game):
                     break
 
     def choose_dealer(self):
-        """Randomly selects a dealer from all players (including the human player) with a spinning wheel effect."""
-        possible_dealers = [self.player] + self.cpus
-        dealer_index = 0
+        """Randomly selects a dealer from all players (including the human player)."""
 
-        with term.location(0, 4):
-            print(
-                BG_COLOR
-                + term.center(
-                    "Dealer will be choosen randomly from all players: ",
-                    self.game_area.width,
-                )
-            )
+        self.change_phase(PokerPhase.CHOOSING_DEALER)
+        self.dealer_idx = random.randint(0, len(self.all_players) - 1)
+        self.current_player_idx = (self.dealer_idx + 3) % len(
+            self.all_players
+        )  # The player to the left of the big blind starts first, which is three positions to the left of the dealer.
 
-        # Start with a very small delay (fast)
-        delay = 0.05
-        # How much the delay increases each step (the "friction")
-        friction = random.uniform(1.1, 1.3)
-        max_delay = 0.6
+        self.notify(PokerEvent.CHOOSE_DEALER)
 
-        while delay < max_delay:
-            # Move to the next item in the array
-            dealer_index = (dealer_index + 1) % len(possible_dealers)
+    def deal_cards(self):
+        """Deals 2 cards to each player from the deck."""
 
-            with term.location(0, 6):
-                # Print the current dealer candidate centered
-                print(
-                    BG_COLOR
-                    + term.center(
-                        possible_dealers[dealer_index].player.name, self.game_area.width
-                    ),
-                    end="",
-                    flush=True,
-                )
+        self.change_phase(PokerPhase.DEALING_CARDS)
 
-            # Wait, then slow down
-            time.sleep(delay)
-            delay *= friction
+        for player in self.all_players:
+            player.cards = self.deck.deal(2)
 
-        self.dealer_idx = dealer_index
+        self.notify(PokerEvent.DEAL_CARDS)
 
-        with term.location(0, 6):
-            # Print the current dealer candidate centered
-            print(
-                BG_COLOR
-                + term.center(
-                    "Dealer: " + self.dealer.player.name, self.game_area.width
-                ),
-                end="",
-                flush=True,
-            )
-        time.sleep(1.5)  # Pause a moment on the final dealer
+    def pay_blinds(self):
+        """Handles the payment of the small and big blinds at the start of each hand."""
+        small_blind_idx = (self.dealer_idx + 1) % len(self.all_players)
+        big_blind_idx = (self.dealer_idx + 2) % len(self.all_players)
 
-    @property
-    def dealer(self) -> PokerPlayer:
-        """Returns the current dealer."""
-        return self.all_players[self.dealer_idx]
+        small_blind_amount = self.big_blind / 2
+        big_blind_amount = self.big_blind
 
-    @property
-    def current_player(self) -> PokerPlayer:
-        """Returns the current player."""
-        return self.all_players[self.current_player_idx]
+        # Small blind payment
+        self.all_players[small_blind_idx].player.money -= small_blind_amount
+        self.pot += small_blind_amount
+
+        # Big blind payment
+        self.all_players[big_blind_idx].player.money -= big_blind_amount
+        self.pot += big_blind_amount
+
+        self.notify(PokerEvent.PAID_BLIND)
+
+    def cpu_betting_round(self):
+        """Handles a single betting round where each cpu active player gets a chance to act (fold, call, or raise)."""
+
+        while True and self.active_player != self.player:
+            if (
+                self.call_count >= len(self.active_players)
+                or all(player.player.money == 0 for player in self.active_players)
+                or len(self.active_players) == 1
+            ):
+                # Move to the next stage of the hand after everyone has called
+                self.call_count = 0
+
+                # Reveal the flop after first hand and then reveal one by one
+                if community_cards_revealed == 0:
+                    community_cards_revealed = 3
+                else:
+                    community_cards_revealed += 1
+
+                if (
+                    community_cards_revealed == 5
+                    or len(self.active_players) == 1
+                    or all(player.player.money == 0 for player in self.active_players)
+                ):
+                    # All community cards are revealed, only one player remains or everyone is all-in, end the hand
+                    break
+
+            # Skip inactive players (those who have folded) or those whove gone all in
+            if (
+                self.active_player not in self.active_players
+                or self.active_player.player.money == 0
+            ):
+                self.advance_turn()
+                continue
+
+            cpu_action = self.cpu_choice(self.active_player)
+
+            match type(cpu_action):
+                case commands.CallCommand | commands.FoldCommand:
+                    cpu_action.execute()
+                case commands.RaiseCommand:
+                    min_bet = self.current_bet + self.min_raise
+                    max_bet = self.active_player.player.money
+
+                    # Clamp the random bet between the minimum raise and the maximum the CPU can afford, and round to 2 decimals
+                    bet = min(
+                        round(random.triangular(min_bet, max_bet, min_bet), 2),
+                        max_bet,
+                    )
+
+                    self.player_raise(self.active_player, bet)
+
+            self.advance_turn()
 
     def advance_turn(self):
         """Advances the turn to the next player."""
-        self.current_player_idx = (self.current_player_idx + 1) % len(self.all_players)
-
-    def print_player_data(self):
-        """
-        Prints the player data (name and money) in the right area of the screen,
-        with the human player at the top
-        and the CPUs below, and the big blind amount and pot at the bottom.
-        """
-
-        data_area_x = self.player_data_area.x + 1
-
-        for y in range(
-            self.player_data_area.y,
-            self.player_data_area.y + self.game_area.height,
+        if (
+            self.call_count >= len(self.active_players)
+            or all(player.player.money == 0 for player in self.active_players)
+            or len(self.active_players) == 1
         ):
-            with term.location(self.player_data_area.x, y):
-                print(BG_COLOR + "|", end="")
+            # Move to the next stage of the hand after everyone has called, everyone is all-in, or only one player remains
+            self.next_phase()
 
-        with term.location(data_area_x, self.player_data_area.y + 1):
-            print(
-                BG_COLOR
-                + term.bold
-                + term.center(
-                    "Players data",
-                    self.player_data_area.width,
-                ),
-                end="",
-            )
+        self.current_player_idx = (self.current_player_idx + 1) % len(self.all_players)
+        self.notify(PokerEvent.CHANGE_PLAYER_TURN)
 
-        with term.location(data_area_x, self.player_data_area.y + 3):
-            print(
-                BG_COLOR
-                + term.center(
-                    f"{term.bold} {self.player.player.name} (${self.player.player.money:.2f}) {term.normal}",
-                    self.player_data_area.width,
-                    fillchar=BG_COLOR + " ",
-                ),
-                end="",
-            )
-        for i, cpu in enumerate(self.cpus):
-            with term.location(data_area_x, self.player_data_area.y + 4 + i):
-                print(
-                    BG_COLOR
-                    + term.center(
-                        f"CPU {i+1} (${cpu.player.money:.2f})",
-                        self.player_data_area.width,
-                        fillchar=BG_COLOR + " ",
-                    ),
-                    end="",
-                )
+    def next_phase(self):
+        """Advances the game to the next phase (e.g., from pre-flop to flop, etc.) and resets the current bet and call count for the new betting round."""
+        # End the hand if we're on the river, or if only one player remains, or if all remaining players are all-in
+        if (
+            self.current_phase == PokerPhase.RIVER
+            or len(self.active_players) == 1
+            or all(player.player.money == 0 for player in self.active_players)
+        ):
+            self.end_hand()
+        else:
+            self.current_phase_idx += 1
+            self.call_count = 0
 
-        game_data_y = self.player_data_area.y + 4 + len(self.cpus) + 1
-        with term.location(data_area_x, game_data_y + 1):
-            print(
-                BG_COLOR
-                + term.center(
-                    f"Big Blind: ${self.big_blind:.2f}",
-                    self.player_data_area.width,
-                    fillchar=BG_COLOR + " ",
-                ),
-                end="",
-            )
+    def player_call(self, player: PokerPlayer):
+        """Handles a player calling the current bet, including updating the pot and the player's money."""
+        payment = min(self.current_bet, player.player.money)
 
-        with term.location(data_area_x, game_data_y + 2):
-            print(
-                BG_COLOR
-                + term.center(
-                    f"Current bet: ${self.current_bet:.2f}",
-                    self.player_data_area.width,
-                    fillchar=BG_COLOR + " ",
-                ),
-                end="",
-            )
+        self.pot += payment
+        player.player.money -= payment
 
-        with term.location(data_area_x, game_data_y + 3):
-            print(
-                BG_COLOR
-                + term.center(
-                    f"Pot: ${self.pot:.2f}",
-                    self.player_data_area.width,
-                    fillchar=BG_COLOR + " ",
-                ),
-                end="",
-            )
+        # Only count as a call if the player is actually calling the current bet,
+        # and not just going all-in with a smaller amount
+        if payment == self.current_bet:
+            self.call_count += 1
+            self.notify(PokerEvent.PLAYER_CALL)
+        else:
+            self.notify(PokerEvent.PLAYER_ALL_IN)
 
-    def print_game_area(self, community_cards: int = 0, show_hands: bool = False):
-        """
-        Prints the game area, including the players' hands and the community cards.
-        The human player's hand is always shown, while the CPUs' hands are hidden until revealed.
-        The dealer is indicated with a bold label, and the small blind and big blind are also
-        indicated next to the respective players.
-        """
+    def request_player_raise(self):
+        """Prompts the player to input a raise amount, ensuring that it meets the minimum raise requirement and is a valid number."""
+        self.notify(PokerEvent.PLAYER_RAISE)
 
-        with term.hidden_cursor():
-            Game.clear_area(self.game_area)
+    def player_raise(self, player: PokerPlayer, new_bet: float):
+        """Handles a player raising the current bet."""
 
-            with term.location(self.game_area.x, self.game_area.y):
+        self.pot += new_bet
+        player.player.money -= new_bet
 
-                # Print first 3 players above the community cards
-                for i, player in enumerate(self.all_players[:3]):
-                    player_active = player in self.active_players
-
-                    cards_str = (
-                        "  ".join(str(card) for card in player.cards)
-                        if player == self.player or show_hands
-                        else "??  ??"
-                    )
-
-                    Poker.print_hand(
-                        self.game_area.x + (i + 1) * self.game_area.width // 4,
-                        self.game_area.y + self.game_area.height // 2 - 3,
-                        (term.red + cards_str if not player_active else cards_str),
-                        f"{term.red if not player_active else ''}{player.player.name}{'(D)' if player == self.dealer else ''}{'(SB)' if player == self.all_players[(self.dealer_idx + 1) % len(self.all_players)] else ''}{'(BB)' if player == self.all_players[(self.dealer_idx + 2) % len(self.all_players)] else ''}",
-                        bold=player == self.current_player,
-                    )
-
-                with term.location(
-                    self.game_area.x, self.game_area.y + self.game_area.height // 2
-                ):
-
-                    print(
-                        BG_COLOR
-                        + term.center(
-                            "Community Cards: "
-                            + "  ".join(
-                                [
-                                    str(card)
-                                    for card in self.community_cards[:community_cards]
-                                ]
-                            ),
-                            self.game_area.width,
-                        ),
-                        end="",
-                    )
-
-                # Print last 3 players below the community cards (in reverse order to cycle clockwise through them)
-                for i, player in enumerate(self.all_players[3:][::-1]):
-                    cards_str = (
-                        "  ".join(str(card) for card in player.cards)
-                        if player == self.player or show_hands
-                        else "??  ??"
-                    )
-
-                    Poker.print_hand(
-                        self.game_area.x + (i + 1) * self.game_area.width // 4,
-                        self.game_area.y + self.game_area.height // 2 + 3,
-                        (
-                            term.red + cards_str
-                            if player not in self.active_players
-                            else cards_str
-                        ),
-                        f"{term.red if player not in self.active_players else ''}{player.player.name}{'(D)' if player == self.dealer else ''}{'(SB)' if player == self.all_players[(self.dealer_idx + 1) % len(self.all_players)] else ''}{'(BB)' if player == self.all_players[(self.dealer_idx + 2) % len(self.all_players)] else ''}",
-                        bold=player == self.current_player,
-                    )
-
-    def update_screen(self, community_cards: int = 0):
-        self.print_player_data()
-        self.print_game_area(community_cards)
-
-    @staticmethod
-    def print_hand(x: int, y: int, cards_str: str, label: str, bold: bool = False):
-        """
-        Utility function to print a player's hand at a specific location, with the cards and a label
-        centered under the cards.
-        Label should be bold for current player.
-        """
-        # 1. Draw the cards
-        with term.location(x, y):
-            print(BG_COLOR + cards_str, end="")
-            print(term.move_down, end="")
-
-        # 2. Draw the label centered under the cards
-        # We calculate the center based on the length of the cards string
-        with term.location(x, y + 1):
-            label = term.italic(label)
-            label = term.bold(label) if bold else label
-
-            print(
-                (BG_COLOR + term.center(label, len(cards_str), BG_COLOR + " ")),
-                end="",
-            )
-
-    def player_input(self) -> Action:
-        self.show_hint("Your turn! (Fold (F), Call (C), Raise (R))")
-
-        while True:
-            with term.cbreak():
-                key = term.inkey().lower()
-                try:
-                    return Action(key)
-                except ValueError:
-                    # Keep looping until a valid key is pressed
-                    continue
-
-    def input_raise(self) -> float:
-        """
-        Prompts the player to input a raise amount, ensuring that it is a valid number and meets the minimum raise requirement.
-        """
-        amount = ""
-
-        min_bet = self.current_bet + self.min_raise
-        max_bet = self.player.player.money
-
-        msg = f"Enter new bet (min: ${min_bet:.2f} max: ${max_bet:.2f}):"
-
-        self.show_hint(msg)
-
-        while True:
-            with term.cbreak():
-                key = term.inkey()
-                if key.isdigit() or (key == "." and "." not in amount):
-                    amount += key
-                    self.show_hint(msg + " $" + amount)
-                elif key.name == "KEY_BACKSPACE":
-                    amount = amount[:-1]
-                    self.show_hint(msg + f" ${amount}" if amount else msg)
-                elif key.name == "KEY_ENTER":
-                    float_amount = float(amount)
-                    # Valid bets are between min and max bets or all-in (even if all in is less than min bet)
-                    if (
-                        float_amount >= min_bet and float_amount <= max_bet
-                    ) or float_amount == max_bet:
-                        return float_amount
+        # If the player goes all-in with a raise that is less than the minimum raise, we still allow it
+        # but we don't update the last_raise amount, so that the next player's minimum raise is still
+        # based on the previous valid raise.
+        if (
+            new_bet == self.active_player.player.money
+            and new_bet >= self.current_bet + self.min_raise
+        ):
+            self.raise_bet(new_bet)
+            self.call_count = 0
+            self.notify(PokerEvent.PLAYER_ALL_IN)
+        elif new_bet > self.current_bet:
+            # Regular raise that meets the minimum raise requirement and is not an all-in
+            self.pot += new_bet
+            self.raise_bet(new_bet)
+            self.notify(PokerEvent.PLAYER_RAISE)
 
     def raise_bet(self, new_bet: float):
         """
@@ -650,10 +539,16 @@ class Poker(Game):
         self.last_raise = new_bet - self.current_bet
         self.current_bet = new_bet
 
-    @property
-    def min_raise(self) -> float:
-        """Returns the minimum raise amount based on the last raise."""
-        return self.last_raise
+    def player_fold(self, player: PokerPlayer):
+        """Handles a player folding, which removes them from the active players in the current hand."""
+        self.active_players.remove(player)
+        self.notify(PokerEvent.PLAYER_FOLD)
+
+    def end_hand(self):
+        """Handles the end of a hand, including determining the winner and distributing the pot."""
+        # This method will be called when the hand is over (e.g., after the river betting round is complete, or if only one player remains).
+        # It should evaluate the hands of all active players, determine the winner(s), and distribute the pot accordingly.
+        pass
 
     @staticmethod
     def evaluate_hand(hand: list[Card]) -> tuple[HandRank, list[CardRank]]:
@@ -766,7 +661,7 @@ class Poker(Game):
 
         return best_score
 
-    def cpu_choice(self, cpu: PokerPlayer) -> Action:
+    def cpu_choice(self, cpu: PokerPlayer) -> Command:
         """
         Determines the CPU's action (fold, call, or raise) based on a simple heuristic that considers the current bet and the CPU's money.
         The CPU will randomly choose to fold, call, or raise, but it will only choose to raise if it can afford at
@@ -776,6 +671,14 @@ class Poker(Game):
 
         if cpu.player.money < min_bet:
             # If the CPU can't afford to call the current bet, it will fold or go all-in (which is treated as a raise)
-            return random.choice([Action.FOLD, Action.RAISE])
+            return random.choice(
+                [commands.FoldCommand(self), commands.RaiseCommand(self)]
+            )
 
-        return random.choice([Action.FOLD, Action.CALL, Action.RAISE])
+        return random.choice(
+            [
+                commands.FoldCommand(self),
+                commands.CallCommand(self),
+                commands.RaiseCommand(self),
+            ]
+        )
