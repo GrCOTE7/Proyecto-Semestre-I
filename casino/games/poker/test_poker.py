@@ -35,11 +35,25 @@ def test_player_call():
     game.choose_dealer()
     game.pay_blinds()
 
-    # game.subscribe()
-
     game.player_call(game.active_player)
 
     assert game.active_player.player.money == 1000 - game.big_blind
+
+def test_player_all_in_call():
+    player = Player("Test")
+    game = Poker(player)
+
+    game.choose_dealer()
+    game.pay_blinds()
+
+    missing = 1
+
+    game.active_player.player.money = game.current_bet - missing
+
+    game.player_call(game.active_player)
+
+    assert game.active_player.player.money == 0
+    assert game.call_count == 0
 
 def test_player_fold():
     player = Player("Test")
@@ -65,3 +79,22 @@ def test_player_raise():
     game.player_raise(game.active_player, min_raise + raise_by)
 
     assert game.last_raise == raise_by
+
+def test_player_raise_all_in():
+    player = Player("Test")
+    game = Poker(player)
+
+    game.choose_dealer()
+    game.pay_blinds()
+
+    current_bet = game.current_bet
+    min_raise = game.min_raise
+
+    game.active_player.player.money = game.current_bet + min_raise - 1
+
+    min_raise = game.min_raise
+
+    game.player_raise(game.active_player, game.active_player.player.money)
+
+    assert game.active_player.player.money == 0
+    assert game.current_bet == current_bet

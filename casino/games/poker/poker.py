@@ -518,26 +518,40 @@ class Poker(Game):
         self.notify(PokerEvent.PLAYER_RAISE)
 
     def player_raise(self, player: PokerPlayer, new_bet: float):
-        """Handles a player raising the current bet."""
+        """
+        Raises the bet to new_bet
+        """
+        
+        # 1. Calculate how much the player must pay
+        # (new_bet is the total)
+        amount_to_add = new_bet - player.player.money
+        
+        # 2. Does the player have enough money?
+        if amount_to_add > player.player.money:
+            raise ValueError("No tienes suficientes fichas para esa apuesta.")
 
-        self.pot += new_bet
-        player.player.money -= new_bet
+        # 3. Requerimiento de Monto Mínimo:
+        # La subida (raise) es la parte que excede a la apuesta actual (current_bet).
+        raise_amount = new_bet - self.current_bet
+        
+        # Si no es un All-in, debe cumplir con el raise mínimo
+        is_all_in = amount_to_add == player.stack
+        
+        if not is_all_in:
+            if new_bet < self.current_bet + self.min_raise:
+                raise ValueError(f"La subida mínima es a {self.current_bet + self.min_raise}")
 
-        # If the player goes all-in with a raise that is less than the minimum raise, we still allow it
-        # but we don't update the last_raise amount, so that the next player's minimum raise is still
-        # based on the previous valid raise.
-        if (
-            new_bet == self.active_player.player.money
-            and new_bet >= self.current_bet + self.min_raise
-        ):
-            self.raise_bet(new_bet)
-            self.call_count = 0
-            self.notify(PokerEvent.PLAYER_ALL_IN)
-        elif new_bet > self.current_bet:
-            # Regular raise that meets the minimum raise requirement and is not an all-in
-            self.pot += new_bet
-            self.raise_bet(new_bet)
-            self.notify(PokerEvent.PLAYER_RAISE)
+        # 4. Ejecución de la jugada
+        player.stack -= amount_to_add
+        player.current_contribution = new_bet
+        self.pot += amount_to_add
+        
+        # Actualizar la apuesta actual de la mesa y el nuevo raise mínimo 
+        # (El nuevo min_raise es la diferencia de esta subida)
+        if raise_amount > self.min_raise:
+            self.min_raise = raise_amount
+            
+        self.current_bet = new_bet
 
     def raise_bet(self, new_bet: float):
         """
@@ -679,9 +693,9 @@ class Poker(Game):
         min_bet = self.current_bet + self.min_raise
 
         if cpu.player.money < min_bet:
-            # If the CPU can't afford to call the current bet, it will fold or go all-in (which is treated as a raise)
+            # If the CPU can't afford to call the current bet, it will fold or go all-in (which is treated as a call)
             return random.choice(
-                [commands.FoldCommand(self), commands.RaiseCommand(self)]
+                [commands.FoldCommand(self), commands.CallCommand(self)]
             )
 
         return random.choice(
