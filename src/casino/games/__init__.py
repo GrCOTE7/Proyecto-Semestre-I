@@ -1,0 +1,49 @@
+from utils.terminal import draw_bg, term, BG_COLOR
+from dataclasses import dataclass
+from abc import ABC, abstractmethod
+from enum import Enum
+from .generic_events import GenericEvent
+from utils.event_listener import EventBus
+from uuid import UUID
+from casino.player import PlayerBuyIn, PlayerController
+
+
+class Game:
+    """
+    A base class for all casino games, providing common functionality and structure.
+    """
+
+    # A Finite State Machine. The current phase of the game, which can be used to manage game flow and logic.
+    # This should be defined as an Enum in each specific game implementation.
+    game_phase: Enum
+
+    def __init__(self, name: str, event_bus: EventBus, buy_in: PlayerBuyIn):
+        self.name = name
+        self.event_bus = event_bus
+        self.buy_in = buy_in
+
+    @property
+    @abstractmethod
+    def active_player(self) -> PlayerController:
+        """Returns the currently active player in the game."""
+        pass
+
+    def start(self):
+        """Starts the game loop."""
+        pass
+
+    def change_phase(self, new_phase: Enum):
+        """Changes the current game phase and notifies listeners of the phase change."""
+        self.game_phase = new_phase
+        self.event_bus.notify(GenericEvent.PHASE_CHANGE, new_phase)
+
+    def show_rules(self):
+        raise NotImplementedError("Subclasses must implement the show_rules() method.")
+
+
+@dataclass(frozen=True)
+class Snapshot:
+    """A snapshot of the game state at a specific point in time, used to pass around game state information."""
+
+    active_player_id: UUID
+    """The id of the currently active player, used to determine whose turn it is and what actions they can take."""

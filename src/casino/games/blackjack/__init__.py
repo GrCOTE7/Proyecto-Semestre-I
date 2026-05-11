@@ -8,19 +8,17 @@ class BlackjackEvent(Enum):
     """
 
     PLAYER_HIT = 0
-    """Event triggered when the player chooses to hit (take another card). The callback will include the new card dealt to the player."""
+    """Event triggered when the player chooses to hit (take another card). The callback will include a CardView of the new card dealt to the player."""
     PLAYER_STAND = 1
-    """Event triggered when the player chooses to stand (keep their current hand). The callback will include the player's final hand."""
+    """Event triggered when the player chooses to stand (keep their current hand). The callback will include a CardView of the player's final hand."""
     DEALER_HIT = 2
-    """Event triggered when the dealer hits (takes another card). The callback will include the dealer's cards."""
+    """Event triggered when the dealer hits (takes another card). The callback will include a CardView of the dealer's cards."""
     PLAYER_WINS = 3
     """Event triggered when the player wins the round. The callback will include the winner object, the payout amount, the player's hand and the dealer's hand."""
     DEALER_WINS = 4
-    """Event triggered when the dealer wins the round. The callback will include the winner object, the player's hand and the dealer's hand."""
+    """Event triggered when the dealer wins the round. The callback will include the BlackjackResult snapshot."""
     TIE = 5
-    """Event triggered when the round ends in a tie. The callback will include the player's hand and the dealer's hand."""
-    PLAYER_BETS = 6
-    """Event triggered when the player places a bet. The callback will include the bet amount."""
+    """Event triggered when the round ends in a tie. The callback will include the BlackjackResult snapshot."""
 
 
 class BlackjackPhase(Enum):

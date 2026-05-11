@@ -1,6 +1,7 @@
 from enum import Enum
 import random
 from dataclasses import dataclass
+from typing import Optional
 
 
 class Suit(Enum):
@@ -55,6 +56,23 @@ class Card:
             return 11  # Ace can also be worth 1, but that logic is typically handled in the game rules
         else:
             return int(self.rank.value)
+
+
+@dataclass
+class CardView:
+    """
+    A view of a card that can be used for displaying the card to the player, which may include whether the card is face up or face down.
+    """
+
+    rank: Optional[str] = None  # None if face down
+    suit: Optional[str] = None  # None if face down
+    is_face_up: bool = False
+
+    @classmethod
+    def from_card(cls, card: Card, face_up=True):
+        if face_up:
+            return cls(rank=card.rank, suit=card.suit, is_face_up=True)
+        return cls(is_face_up=False)  # Rank and Suit remain hidden (None)
 
 
 class Deck:

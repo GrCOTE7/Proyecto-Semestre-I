@@ -1,0 +1,104 @@
+from dataclasses import dataclass
+from uuid import UUID, uuid4
+from utils.commands.command_manager import CommandManager
+from utils.event_listener import EventBus
+from typing import Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from casino.games import GenericEvent, Snapshot
+
+
+@dataclass
+class PlayerAccount:
+    """
+    A class representing a player's account, including their balance and methods to manage it.
+    This is separate from the PlayerController to allow for more flexible account management
+    and potential future features like multiple accounts per player or shared accounts.
+    """
+
+    id: UUID
+    name: str
+    balance: int
+
+    def deposit(self, amount: int):
+        """Deposit money into the player's account."""
+        self.balance += amount
+
+    def withdraw(self, amount: int) -> bool:
+        """Withdraw money from the player's account. Returns True if successful, False if insufficient funds."""
+        if 0 < amount <= self.balance:
+            self.balance -= amount
+            return True
+        return False
+
+    def buy_in(self, amount: int) -> Optional[PlayerBuyIn]:
+        """Handles the buy-in process for a game. Returns The PlayerBuyIn object if successful, None if insufficient funds."""
+        if self.withdraw(amount):
+            return PlayerBuyIn(player_id=self.id, name=self.name, amount=amount)
+        return None
+
+
+@dataclass
+class PlayerBuyIn:
+    """
+    A class representing a player's buy-in for a game, including the amount and any relevant details.
+    This can be used to track how much a player has bought in for a specific game session, separate from their overall account balance.
+    """
+
+    player_id: UUID
+    name: str
+    amount: int
+
+
+class PlayerController:
+    """
+    A class representing a player in a casino game.
+    """
+
+    event_bus: EventBus
+    command_manager: CommandManager
+    player_id: UUID
+
+    def __init__(
+        self, event_bus: EventBus, command_manager: CommandManager, player_id: UUID
+    ):
+        self.event_bus = event_bus
+        self.command_manager = command_manager
+        self.player_id = player_id
+
+        self.is_my_turn = False
+        self.event_bus.subscribe(GenericEvent.PHASE_CHANGE, self.on_turn)
+
+    def on_turn(self, snapshot: Snapshot):
+        # We only care if it's our turn
+        self.is_my_turn = snapshot.active_player_id == self.player_id
+
+
+class HumanController(PlayerController):
+    """
+    A class representing a human player in a casino game.
+    """
+
+    def __init__(
+        self, event_bus: EventBus, command_manager: CommandManager, player_id: UUID
+    ):
+        super().__init__(event_bus, command_manager, player_id)
+
+    def handle_input(self, user_input: str):
+        """Handles user input by looking up the corresponding command and executing it."""
+        if self.is_my_turn:
+            self.command_manager.handle_input(user_input)
+
+
+class CPUController(PlayerController):
+    """
+    A class representing a CPU player in a casino game.
+    The extended class should implement the logic for the CPU's actions based on the game state and its own strategy.
+    It should also subscribe to relevant game events on the __init__ method to know when it's the CPU's turn and react accordingly.
+    """
+
+    def __init__(
+        self, command_manager: CommandManager, event_bus: EventBus, player_id: UUID
+    ):
+        # Initialize Player part
+        super().__init__(event_bus, command_manager, player_id)

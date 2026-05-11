@@ -1,9 +1,9 @@
 from casino.casino import Casino
-from casino.player import Player
+from casino.player import PlayerController
 
 
 def main():
-    casino = Casino("Python Casino", Player("Alice"))
+    casino = Casino("Python Casino", PlayerController("Alice"))
     casino.menu()
 
 

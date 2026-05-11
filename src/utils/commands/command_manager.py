@@ -1,10 +1,13 @@
 from abc import ABC
-from .command import Command
-from casino.games import Game
+from utils.commands.command import Command
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from casino.games import Game
 
 
-class GameManager(ABC):
-    """The Base Template for all games."""
+class CommandManager(ABC):
+    """A command manager that stores all available and executed commands for a game."""
 
     commands: dict[str, Command]
 

@@ -1,9 +1,9 @@
 from casino.games.blackjack.renderer import BlackjackTerminalRenderer
-from casino.player import Player
+from casino.player import PlayerController
 from casino.games.blackjack.blackjack import Blackjack, BlackjackManager
 from casino.games.poker.poker import Poker, PokerManager
 from casino.games.poker.renderer import PokerRenderer
-from utils.commands.game_manager import GameManager
+from casino.games.game_manager import GameManager
 from casino.games import Game
 from dataclasses import dataclass
 from utils.renderer import Renderer
@@ -26,11 +26,11 @@ class Casino:
     """
 
     name: str
-    player: Player
+    player: PlayerController
     games: list[CasinoGame]
     game_active: bool
 
-    def __init__(self, name: str, player: Player):
+    def __init__(self, name: str, player: PlayerController):
         self.name = name
         self.player = player
         self.game_active = False

@@ -1,5 +1,9 @@
 from abc import ABC, abstractmethod
-from casino.games import Game
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from casino.games import Game
 
 
 class Command(ABC):
