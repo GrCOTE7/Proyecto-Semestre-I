@@ -1,22 +1,24 @@
 from casino.games.blackjack import BlackjackPhase
 from casino.games.blackjack.blackjack import Blackjack
 from casino.games.blackjack import BlackjackEvent
-from casino.player import Player
+from casino.player import PlayerController
 from utils.cards import Card, Rank, Suit
 
 
-def test_active_player():
-    player = Player("Test Player")
+def test_active_player(mock_context):
+    player = PlayerController(
+        mock_context["bus"], mock_context["cmd"], mock_context["id"]
+    )
 
-    game = Blackjack(player)
-    assert game.active_player.player.name == "Test Player"
+    game = Blackjack(mock_context["bus"], player)
+    assert game.active_player.player.player_id == player.player_id
 
     game.change_phase(BlackjackPhase.DEALER_TURN)
-    assert game.active_player.player.name == "Dealer"
+    assert game.active_player.player_id == game.dealer.player_id
 
 
 def test_hit_and_stand():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
     game.accept_bet(100)
 
@@ -30,7 +32,7 @@ def test_hit_and_stand():
 
 
 def test_hand_value_calculation():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
     game.accept_bet(100)
 
@@ -59,7 +61,7 @@ def test_hand_value_calculation():
 
 
 def test_dealer_play():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
 
     events = []
@@ -80,7 +82,7 @@ def test_dealer_play():
 
 
 def test_player_bust():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
     game.accept_bet(100)
 
@@ -93,7 +95,7 @@ def test_player_bust():
 
 
 def test_dealer_bust():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
     game.accept_bet(100)
 
@@ -105,7 +107,7 @@ def test_dealer_bust():
 
 
 def test_full_round():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
     game.accept_bet(100)
 
@@ -121,7 +123,7 @@ def test_full_round():
 
 
 def test_player_wins():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
     bet = 100
     game.accept_bet(bet)
@@ -148,7 +150,7 @@ def test_player_wins():
 
 
 def test_player_wins_blackjack():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
     bet = 100
     game.accept_bet(bet)
@@ -175,7 +177,7 @@ def test_player_wins_blackjack():
 
 
 def test_dealer_wins():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = Blackjack(player)
     bet = 100
     game.accept_bet(bet)

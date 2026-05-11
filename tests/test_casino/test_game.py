@@ -1,4 +1,4 @@
-from casino.games import Game, Player
+from casino.games import Game, PlayerController
 from enum import Enum
 from casino.games.generic_events import GenericEvent
 
@@ -9,17 +9,17 @@ class DummyPhase(Enum):
 
 
 class DummyGame(Game):
-    def __init__(self, player: Player):
+    def __init__(self, player: PlayerController):
         super().__init__("Dummy Game")
         self._active_player = player
 
     @property
-    def active_player(self) -> Player:
+    def active_player(self) -> PlayerController:
         return self._active_player
 
 
 def test_finite_state_machine():
-    game = DummyGame(Player("Test Player"))
+    game = DummyGame(PlayerController("Test Player"))
     game.game_phase = DummyPhase.PHASE_ONE
 
     assert game.game_phase == DummyPhase.PHASE_ONE
@@ -29,7 +29,7 @@ def test_finite_state_machine():
 
 
 def test_event_notification():
-    game = DummyGame(Player("Test Player"))
+    game = DummyGame(PlayerController("Test Player"))
     events_triggered = []
 
     def on_phase_change(new_phase):
@@ -44,6 +44,6 @@ def test_event_notification():
 
 
 def test_active_player():
-    player = Player("Test Player")
+    player = PlayerController("Test Player")
     game = DummyGame(player)
     assert game.active_player.name == "Test Player"

@@ -1,35 +1,45 @@
 from .poker import Poker
 from .events import PokerEvent
-from casino.player import Player
+from casino.player import PlayerController
+
 
 def test_choose_dealer():
-    player = Player("Test")
+    player = PlayerController("Test")
     game = Poker(player)
 
     game.choose_dealer()
 
     assert game.dealer == game.all_players[game.dealer_idx]
 
+
 def test_deal_cards():
-    player = Player("Test")
+    player = PlayerController("Test")
     game = Poker(player)
 
     game.deal_cards()
 
     assert all(map(lambda p: len(p.cards) == 2, game.all_players))
 
+
 def test_pay_blinds():
-    player = Player("Test")
+    player = PlayerController("Test")
     game = Poker(player)
 
     game.choose_dealer()
     game.pay_blinds()
 
-    assert game.all_players[(game.dealer_idx + 1) % len(game.all_players)].player.money == 1000 - game.big_blind / 2
-    assert game.all_players[(game.dealer_idx + 2) % len(game.all_players)].player.money == 1000 - game.big_blind
+    assert (
+        game.all_players[(game.dealer_idx + 1) % len(game.all_players)].player.money
+        == 1000 - game.big_blind / 2
+    )
+    assert (
+        game.all_players[(game.dealer_idx + 2) % len(game.all_players)].player.money
+        == 1000 - game.big_blind
+    )
+
 
 def test_player_call():
-    player = Player("Test")
+    player = PlayerController("Test")
     game = Poker(player)
 
     game.choose_dealer()
@@ -39,8 +49,9 @@ def test_player_call():
 
     assert game.active_player.player.money == 1000 - game.big_blind
 
+
 def test_player_all_in_call():
-    player = Player("Test")
+    player = PlayerController("Test")
     game = Poker(player)
 
     game.choose_dealer()
@@ -55,8 +66,9 @@ def test_player_all_in_call():
     assert game.active_player.player.money == 0
     assert game.call_count == 0
 
+
 def test_player_fold():
-    player = Player("Test")
+    player = PlayerController("Test")
     game = Poker(player)
 
     game.choose_dealer()
@@ -66,8 +78,9 @@ def test_player_fold():
 
     assert game.active_player not in game.active_players
 
+
 def test_player_raise():
-    player = Player("Test")
+    player = PlayerController("Test")
     game = Poker(player)
 
     game.choose_dealer()
@@ -80,8 +93,9 @@ def test_player_raise():
 
     assert game.last_raise == raise_by
 
+
 def test_player_raise_all_in():
-    player = Player("Test")
+    player = PlayerController("Test")
     game = Poker(player)
 
     game.choose_dealer()
