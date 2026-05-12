@@ -5,7 +5,11 @@ from enum import Enum
 from .generic_events import GenericEvent
 from utils.event_listener import EventBus
 from uuid import UUID
-from casino.player import PlayerBuyIn, PlayerController
+from uuid import UUID
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from casino.player import PlayerBuyIn
 
 
 class Game:
@@ -24,7 +28,7 @@ class Game:
 
     @property
     @abstractmethod
-    def active_player(self) -> PlayerController:
+    def active_player(self) -> UUID:
         """Returns the currently active player in the game."""
         pass
 

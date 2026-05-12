@@ -11,8 +11,7 @@ class CommandManager(ABC):
 
     commands: dict[str, Command]
 
-    def __init__(self, game: Game):
-        self.game = game
+    def __init__(self):
         self.commands = {}
 
     def register_command(self, key: str, command: Command):

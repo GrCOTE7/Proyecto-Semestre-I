@@ -1,10 +1,13 @@
+from typing import Optional
+from uuid import UUID
+
 from utils.event_listener import EventBus
 
 from . import BlackjackPhase
 from casino.games import Game
-from casino.player import PlayerBuyIn, PlayerController, CPUController
+from casino.player import PlayerBuyIn, PlayerController
 from utils.cards import CardView, Deck, Card, Rank
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from casino.games.game_manager import GameManager
 from .commands import HitCommand, StandCommand, RequestBetCommand
 from casino.games.generic_events import GenericEvent
@@ -71,7 +74,7 @@ class BlackJackPlayer(PlayerController):
 
     player: PlayerController
     balance: int
-    cards: list[Card]
+    cards: list[Card] = field(default_factory=list)
 
     @property
     def hand_value(self) -> int:
@@ -119,7 +122,7 @@ class Blackjack(Game):
     """
 
     deck: Deck
-    dealer = BlackJackPlayer
+    dealer: BlackJackPlayer
     player: BlackJackPlayer
     bet: float
     game_phase: BlackjackPhase
@@ -128,22 +131,23 @@ class Blackjack(Game):
         self, event_bus: EventBus, player: PlayerController, buyin: PlayerBuyIn
     ):
         super().__init__("Blackjack", event_bus, buyin)
-        self.dealer = BlackJackPlayer(("Dealer"), [])
-        self.player = BlackJackPlayer(player, [])
+        self.dealer = BlackJackPlayer(("Dealer"), 0)
+        self.player = BlackJackPlayer(player, buyin.amount)
         self.deck = Deck(True)
         self.game_phase = BlackjackPhase.WAITING_FOR_BET
         self.bet = buyin.amount
 
     @property
-    def active_player(self) -> BlackJackPlayer:
+    def active_player(self) -> Optional[UUID]:
+        """
+        Returns the ID of the currently active player. During the player's turn, it returns the player's ID.
+        During the dealer's turn, it returns None since the dealer is not a player in the traditional sense and does not have a player ID.
+        """
         return (
-            self.dealer
+            None
             if self.game_phase == BlackjackPhase.DEALER_TURN
-            else self.player
+            else self.buy_in.player_id
         )
-
-    def request_bet(self):
-        self.change_phase(BlackjackPhase.WAITING_FOR_BET)
 
     def start(self):
         # Give initial cards to player and dealer
@@ -205,7 +209,7 @@ class Blackjack(Game):
             and self.dealer.hand_value > self.player.hand_value
         ):
             event = BlackjackEvent.DEALER_WINS
-            payout = -self.bet
+            payout = 0  # Player loses, so payout is 0
         elif self.dealer.has_busted or self.player.hand_value > self.dealer.hand_value:
             event = BlackjackEvent.PLAYER_WINS
 
@@ -214,7 +218,7 @@ class Blackjack(Game):
                 payout = self.bet * 2.5  # Blackjack pays 3:2
             else:
                 payout = self.bet * 2  # Regular win pays 1:1
-        elif self.player.hand_value == self.dealer.hand_value:
+        else:
             # It's a tie, so we return the player's original bet
             event = BlackjackEvent.TIE
             payout = self.bet

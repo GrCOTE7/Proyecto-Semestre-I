@@ -14,7 +14,7 @@ class BlackjackEvent(Enum):
     DEALER_HIT = 2
     """Event triggered when the dealer hits (takes another card). The callback will include a CardView of the dealer's cards."""
     PLAYER_WINS = 3
-    """Event triggered when the player wins the round. The callback will include the winner object, the payout amount, the player's hand and the dealer's hand."""
+    """Event triggered when the player wins the round. The callback will include the BlackjackResult snapshot."""
     DEALER_WINS = 4
     """Event triggered when the dealer wins the round. The callback will include the BlackjackResult snapshot."""
     TIE = 5

@@ -2,10 +2,11 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 from utils.commands.command_manager import CommandManager
 from utils.event_listener import EventBus
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
+from casino.games import GenericEvent
 
 if TYPE_CHECKING:
-    from casino.games import GenericEvent, Snapshot
+    from casino.games import Snapshot
 
 
 @dataclass
@@ -66,12 +67,9 @@ class PlayerController:
         self.command_manager = command_manager
         self.player_id = player_id
 
-        self.is_my_turn = False
-        self.event_bus.subscribe(GenericEvent.PHASE_CHANGE, self.on_turn)
-
-    def on_turn(self, snapshot: Snapshot):
-        # We only care if it's our turn
-        self.is_my_turn = snapshot.active_player_id == self.player_id
+    @property
+    def is_my_turn(self, snapshot: Snapshot) -> bool:
+        raise NotImplementedError("Subclasses must implement the is_my_turn property.")
 
 
 class HumanController(PlayerController):

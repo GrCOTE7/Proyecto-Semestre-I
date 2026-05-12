@@ -1,6 +1,11 @@
-from casino.games import Game, PlayerController
+from uuid import uuid4
+
+from casino.games import Game
 from enum import Enum
 from casino.games.generic_events import GenericEvent
+from casino.player import PlayerBuyIn
+
+from utils.event_listener import EventBus
 
 
 class DummyPhase(Enum):
@@ -9,17 +14,20 @@ class DummyPhase(Enum):
 
 
 class DummyGame(Game):
-    def __init__(self, player: PlayerController):
-        super().__init__("Dummy Game")
-        self._active_player = player
+    def __init__(self):
+        super().__init__(
+            name="Dummy Game",
+            event_bus=EventBus(),
+            buy_in=PlayerBuyIn(player_id=uuid4(), name="Test Player", amount=100),
+        )
 
     @property
-    def active_player(self) -> PlayerController:
-        return self._active_player
+    def active_player(self):
+        return self.buy_in.player_id
 
 
 def test_finite_state_machine():
-    game = DummyGame(PlayerController("Test Player"))
+    game = DummyGame()
     game.game_phase = DummyPhase.PHASE_ONE
 
     assert game.game_phase == DummyPhase.PHASE_ONE
@@ -29,13 +37,13 @@ def test_finite_state_machine():
 
 
 def test_event_notification():
-    game = DummyGame(PlayerController("Test Player"))
+    game = DummyGame()
     events_triggered = []
 
     def on_phase_change(new_phase):
         events_triggered.append((GenericEvent.PHASE_CHANGE, new_phase))
 
-    game.subscribe(GenericEvent.PHASE_CHANGE, on_phase_change)
+    game.event_bus.subscribe(GenericEvent.PHASE_CHANGE, on_phase_change)
     game.change_phase(DummyPhase.PHASE_ONE)
 
     assert len(events_triggered) == 1
@@ -44,6 +52,5 @@ def test_event_notification():
 
 
 def test_active_player():
-    player = PlayerController("Test Player")
-    game = DummyGame(player)
-    assert game.active_player.name == "Test Player"
+    game = DummyGame()
+    assert game.active_player == game.buy_in.player_id
