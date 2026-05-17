@@ -1,3 +1,7 @@
 [tool.pytest.ini_options]
 pythonpath = "src"
 testpaths = ["tests"]
+
+[project]
+name = "casino-project"
+version = "0.1.0"

@@ -3,7 +3,7 @@ from casino.player import PlayerController
 
 
 def main():
-    casino = Casino("Python Casino", PlayerController("Alice"))
+    casino = Casino("Python Casino")
     casino.menu()
 
 

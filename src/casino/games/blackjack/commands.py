@@ -11,14 +11,10 @@ class HitCommand(Command):
 
     game: Blackjack
 
-    def __init__(
-        self,
-        game: Blackjack,
-    ):
-        super().__init__(game, "Hit (h): Take another card from the deck.")
-
     def execute(self):
-        active_player = self.game.active_player
+        player_id = self.game.active_player
+        # If the active player is None, it means it's the dealer's turn, so we use the dealer as the active player for hitting.
+        active_player = self.game.get_player_by_id(player_id) or self.game.dealer
         self.game.hit(active_player)
 
 
@@ -27,20 +23,5 @@ class StandCommand(Command):
 
     game: Blackjack
 
-    def __init__(self, game: Blackjack):
-        super().__init__(game, "Stand (s): Keep your current hand. Ends your turn.")
-
     def execute(self):
         self.game.dealer_play()
-
-
-class RequestBetCommand(Command):
-    """Command to handle the player's decision to place a bet before the round starts."""
-
-    game: Blackjack
-
-    def __init__(self, game: Blackjack):
-        super().__init__(game, "Place Bet: Place your bet for the round.")
-
-    def execute(self):
-        self.game.request_bet()

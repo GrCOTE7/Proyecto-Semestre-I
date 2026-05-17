@@ -1,12 +1,9 @@
 from dataclasses import dataclass
-from uuid import UUID, uuid4
+from uuid import UUID
 from utils.commands.command_manager import CommandManager
 from utils.event_listener import EventBus
-from typing import Optional, TYPE_CHECKING
-from casino.games import GenericEvent
-
-if TYPE_CHECKING:
-    from casino.games import Snapshot
+from typing import Optional
+from casino.games.generic_events import GenericEvent
 
 
 @dataclass
@@ -59,6 +56,7 @@ class PlayerController:
     event_bus: EventBus
     command_manager: CommandManager
     player_id: UUID
+    is_my_turn: bool = False
 
     def __init__(
         self, event_bus: EventBus, command_manager: CommandManager, player_id: UUID
@@ -67,9 +65,16 @@ class PlayerController:
         self.command_manager = command_manager
         self.player_id = player_id
 
-    @property
-    def is_my_turn(self, snapshot: Snapshot) -> bool:
-        raise NotImplementedError("Subclasses must implement the is_my_turn property.")
+        self.event_bus.subscribe(GenericEvent.TURN_START, self.on_turn)
+
+    def on_turn(self, id: UUID):
+        self.is_my_turn = self.player_id == id
+
+    def handle_input(self, command_idx: int):
+        """Handles user input by looking up the corresponding command and executing it."""
+        if self.is_my_turn:
+            command = self.command_manager.get_command_by_index(command_idx)
+            self.command_manager.execute_command(command)
 
 
 class HumanController(PlayerController):

@@ -64,8 +64,8 @@ class CardView:
     A view of a card that can be used for displaying the card to the player, which may include whether the card is face up or face down.
     """
 
-    rank: Optional[str] = None  # None if face down
-    suit: Optional[str] = None  # None if face down
+    rank: Optional[Rank] = None  # None if face down
+    suit: Optional[Suit] = None  # None if face down
     is_face_up: bool = False
 
     @classmethod
@@ -73,6 +73,11 @@ class CardView:
         if face_up:
             return cls(rank=card.rank, suit=card.suit, is_face_up=True)
         return cls(is_face_up=False)  # Rank and Suit remain hidden (None)
+
+    def __str__(self):
+        if self.is_face_up:
+            return f"{self.rank.value}{self.suit.value}"
+        return "🂠"  # Back of the card
 
 
 class Deck:

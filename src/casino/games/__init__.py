@@ -1,3 +1,4 @@
+from utils.commands.command import CommandSchema
 from utils.terminal import draw_bg, term, BG_COLOR
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
@@ -20,9 +21,9 @@ class Game:
     # A Finite State Machine. The current phase of the game, which can be used to manage game flow and logic.
     # This should be defined as an Enum in each specific game implementation.
     game_phase: Enum
+    name: str
 
-    def __init__(self, name: str, event_bus: EventBus, buy_in: PlayerBuyIn):
-        self.name = name
+    def __init__(self, event_bus: EventBus, buy_in: PlayerBuyIn):
         self.event_bus = event_bus
         self.buy_in = buy_in
 
@@ -36,13 +37,21 @@ class Game:
         """Starts the game loop."""
         pass
 
-    def change_phase(self, new_phase: Enum):
-        """Changes the current game phase and notifies listeners of the phase change."""
+    def change_phase(self, new_phase: Enum, snapshot: Snapshot = None):
+        """
+        Changes the current game phase and notifies listeners of the phase change.
+        It sends the new phase and an optional snapshot of the game state to listeners as a tuple (new_phase, snapshot),
+        allowing them to react accordingly (e.g., updating the UI, enabling/disabling commands).
+        """
         self.game_phase = new_phase
-        self.event_bus.notify(GenericEvent.PHASE_CHANGE, new_phase)
+        self.event_bus.notify(GenericEvent.PHASE_CHANGE, (new_phase, snapshot))
 
     def show_rules(self):
         raise NotImplementedError("Subclasses must implement the show_rules() method.")
+
+    def get_available_commands(self) -> list[CommandSchema]:
+        """Returns a set of CommandSchema objects representing the commands available in the current game state."""
+        return []
 
 
 @dataclass(frozen=True)
@@ -51,3 +60,5 @@ class Snapshot:
 
     active_player_id: UUID
     """The id of the currently active player, used to determine whose turn it is and what actions they can take."""
+    player_name: str
+    """The name of the currently active player, used for display purposes and to personalize the game experience."""

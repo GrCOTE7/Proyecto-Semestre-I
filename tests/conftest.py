@@ -9,6 +9,5 @@ from casino.player import PlayerAccount
 def mock_context():
     return {
         "bus": EventBus(),
-        "cmd": CommandManager(),
         "player": PlayerAccount(uuid4(), "Test Player", 1000),
     }

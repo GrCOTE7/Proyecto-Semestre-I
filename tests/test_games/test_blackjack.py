@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from casino.games.blackjack import BlackjackPhase
-from casino.games.blackjack.blackjack import Blackjack, BlackjackResult
+from casino.games.blackjack.blackjack import Blackjack, BlackjackSnapshot
 from casino.games.blackjack import BlackjackEvent
 from casino.player import PlayerController
 from utils.cards import Card, Rank, Suit, CardView
@@ -17,10 +17,9 @@ def mock_player_controller(mock_context):
 
 
 @fixture
-def blackjack_game(mock_context, mock_player_controller):
+def blackjack_game(mock_context):
     return Blackjack(
         mock_context["bus"],
-        mock_player_controller,
         PlayerBuyIn(uuid4(), mock_context["player"].id, 100),
     )
 
@@ -128,9 +127,9 @@ def test_full_round(blackjack_game):
 
 def test_player_wins(blackjack_game):
     game: Blackjack = blackjack_game
-    result: BlackjackResult = None
+    result: BlackjackSnapshot = None
 
-    def on_player_win(res: BlackjackResult):
+    def on_player_win(res: BlackjackSnapshot):
         nonlocal result
         result = res
 

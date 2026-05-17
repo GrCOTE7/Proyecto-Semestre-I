@@ -1,6 +1,7 @@
 from typing import Optional
 from uuid import UUID
 
+from utils.commands.command import CommandSchema
 from utils.event_listener import EventBus
 
 from . import BlackjackPhase
@@ -9,29 +10,12 @@ from casino.player import PlayerBuyIn, PlayerController
 from utils.cards import CardView, Deck, Card, Rank
 from dataclasses import dataclass, field
 from casino.games.game_manager import GameManager
-from .commands import HitCommand, StandCommand, RequestBetCommand
+from .commands import HitCommand, StandCommand
 from casino.games.generic_events import GenericEvent
 from . import BlackjackEvent
 from casino.games import Snapshot
 
-
-class BlackjackManager(GameManager):
-    commands: dict[str, HitCommand | StandCommand]
-
-    def __init__(self, game: Blackjack):
-        super().__init__(game)
-        # Register specific Blackjack commands
-        self.command_manager.register_command("H", HitCommand(game))
-        self.command_manager.register_command("S", StandCommand(game))
-        self.command_manager.register_command("B", RequestBetCommand(game))
-
-    def get_available_commands(self):
-        if self.game.game_phase == BlackjackPhase.WAITING_FOR_BET:
-            return {"B": self.commands["B"]}
-        elif self.game.game_phase == BlackjackPhase.PLAYER_TURN:
-            return {"H": self.commands["H"], "S": self.commands["S"]}
-        else:
-            return {}  # No commands available during dealer's turn or round end
+from . import commands
 
 
 @dataclass(frozen=True)
@@ -52,27 +36,20 @@ class BlackjackSnapshot(Snapshot):
     The current phase of the game (e.g., WAITING_FOR_BET, PLAYER_TURN, DEALER_TURN, ROUND_END). 
     This can be used to determine which actions are available to the player and how to render the game state.
     """
-
-
-@dataclass(frozen=True)
-class BlackjackResult(BlackjackSnapshot):
-    """
-    A snapshot of the final result of a round of Blackjack, including the payout information (negative player lost, positive player won, 0 tie).
-    This can be used to display the results to the player after a round has ended.
-    """
-
-    payout: float
+    available_commands: set[CommandSchema] = field(default_factory=set)
+    """A set of CommandSchema objects representing the commands available to the player in the current game state."""
+    payout: float = None
     """The amount won or lost (positive for win, negative for loss, zero for tie)"""
 
 
 @dataclass
-class BlackJackPlayer(PlayerController):
+class BlackJackPlayer:
     """
     Represents a player in the Blackjack game, holding their hand of cards and providing
     methods to calculate hand value and check for blackjack or bust conditions.
     """
 
-    player: PlayerController
+    player_id: UUID
     balance: int
     cards: list[Card] = field(default_factory=list)
 
@@ -127,15 +104,13 @@ class Blackjack(Game):
     bet: float
     game_phase: BlackjackPhase
 
-    def __init__(
-        self, event_bus: EventBus, player: PlayerController, buyin: PlayerBuyIn
-    ):
-        super().__init__("Blackjack", event_bus, buyin)
-        self.dealer = BlackJackPlayer(("Dealer"), 0)
-        self.player = BlackJackPlayer(player, buyin.amount)
+    def __init__(self, event_bus: EventBus, buyin: PlayerBuyIn):
+        super().__init__(event_bus, buyin)
+        self.dealer = BlackJackPlayer(None, 0, [])
+        self.player = BlackJackPlayer(buyin.player_id, buyin.amount, [])
         self.deck = Deck(True)
-        self.game_phase = BlackjackPhase.WAITING_FOR_BET
         self.bet = buyin.amount
+        self.game_phase = BlackjackPhase.PLAYER_TURN
 
     @property
     def active_player(self) -> Optional[UUID]:
@@ -149,48 +124,51 @@ class Blackjack(Game):
             else self.buy_in.player_id
         )
 
+    def get_player_by_id(self, player_id: UUID) -> Optional[BlackJackPlayer]:
+        """Returns the player object corresponding to the given player ID, or None if not found."""
+        if self.player.player_id == player_id:
+            return self.player
+        return None
+
     def start(self):
         # Give initial cards to player and dealer
-        for i in range(2):
+        for _ in range(2):
             self.hit(self.player)
-            self.event_bus.notify(
-                BlackjackEvent.PLAYER_HIT, CardView.from_card(self.player.cards[-1])
-            )
             self.hit(self.dealer)
-            self.event_bus.notify(
-                BlackjackEvent.DEALER_HIT,
-                CardView.from_card(
-                    self.dealer.cards[-1], face_up=i == 0
-                ),  # Only the dealer's first card is face up
-            )
 
         # If the dealer has a blackjack, the round ends immediately
         if self.dealer.is_blackjack:
             self.end_round()
 
-        self.change_phase(BlackjackPhase.PLAYER_TURN)
+        self.event_bus.notify(GenericEvent.TURN_START, self.buy_in.player_id)
+        self.change_phase(BlackjackPhase.PLAYER_TURN, self.get_snapshot())
 
     def hit(self, player: BlackJackPlayer):
         """Deals a new card to the specified player."""
         new_card = self.deck.deal(1)[0]
         player.cards.append(new_card)
 
-        card_view = CardView.from_card(new_card)
+        player_turn = self.player == player
 
         self.event_bus.notify(
-            (
-                BlackjackEvent.PLAYER_HIT
-                if self.player == player
-                else BlackjackEvent.DEALER_HIT
-            ),
-            card_view,
+            (BlackjackEvent.PLAYER_HIT if player_turn else BlackjackEvent.DEALER_HIT),
+            self.get_snapshot(),
         )
 
-        if player.hand_value > 21:
+        if player.hand_value > 21 or player.is_blackjack:
             self.end_round()
+        else:
+            self.change_phase(
+                (
+                    BlackjackPhase.PLAYER_TURN
+                    if player_turn
+                    else BlackjackPhase.DEALER_TURN
+                ),
+                self.get_snapshot(),
+            )
 
     def dealer_play(self):
-        self.change_phase(BlackjackPhase.DEALER_TURN)
+        self.change_phase(BlackjackPhase.DEALER_TURN, self.get_snapshot())
 
         while self.dealer.hand_value < 17:
             self.hit(self.dealer)
@@ -199,7 +177,7 @@ class Blackjack(Game):
         self.end_round()
 
     def end_round(self):
-        self.change_phase(BlackjackPhase.ROUND_END)
+        self.change_phase(BlackjackPhase.ROUND_END, self.get_snapshot())
 
         payout = 0
         event = None
@@ -209,7 +187,8 @@ class Blackjack(Game):
             and self.dealer.hand_value > self.player.hand_value
         ):
             event = BlackjackEvent.DEALER_WINS
-            payout = 0  # Player loses, so payout is 0
+            # Player loses, so we return a negative payout to indicate loss
+            payout = -self.bet
         elif self.dealer.has_busted or self.player.hand_value > self.dealer.hand_value:
             event = BlackjackEvent.PLAYER_WINS
 
@@ -223,14 +202,35 @@ class Blackjack(Game):
             event = BlackjackEvent.TIE
             payout = self.bet
 
-        final_snapshot = BlackjackResult(
-            self.buy_in.player_id,
-            [CardView.from_card(card) for card in self.player.cards],
-            [CardView.from_card(card) for card in self.dealer.cards],
-            self.bet,
-            self.game_phase,
-            payout,
-        )
+        final_snapshot = self.get_snapshot(True, payout=payout)
 
         self.event_bus.notify(event, final_snapshot)
-        self.event_bus.notify(GenericEvent.GAME_END)
+        self.event_bus.notify(GenericEvent.GAME_END, payout)
+
+    def get_available_commands(self) -> list[CommandSchema]:
+        return [
+            CommandSchema("Hit", commands.HitCommand),
+            CommandSchema("Stand", commands.StandCommand),
+        ]
+
+    def get_snapshot(
+        self, show_dealer_cards: bool = False, **kwargs
+    ) -> BlackjackSnapshot:
+        """Returns a snapshot of the current game state for rendering and logic purposes."""
+        return BlackjackSnapshot(
+            (
+                self.buy_in.player_id
+                if self.game_phase == BlackjackPhase.PLAYER_TURN
+                else None
+            ),
+            self.buy_in.name if self.buy_in.name else "Dealer",
+            [CardView.from_card(card) for card in self.player.cards],
+            [
+                CardView.from_card(card, face_up=i == 0 or show_dealer_cards)
+                for i, card in enumerate(self.dealer.cards)
+            ],
+            self.bet,
+            self.game_phase,
+            self.get_available_commands(),
+            **kwargs
+        )

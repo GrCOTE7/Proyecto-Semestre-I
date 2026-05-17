@@ -1,29 +1,25 @@
 from abc import ABC
-from utils.commands.command import Command
+from utils.commands.command import Command, CommandSchema
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from casino.games import Game
 
 
-class CommandManager(ABC):
+class CommandManager:
     """A command manager that stores all available and executed commands for a game."""
 
-    commands: dict[str, Command]
+    def __init__(self, game: Game):
+        self.game = game
 
-    def __init__(self):
-        self.commands = {}
+    def execute_command(self, command: CommandSchema):
+        """Builds a command from the given schema, executes, and logs it."""
+        command: Command = command.command_class(
+            self.game, **{param.name: param.value for param in command.parameters}
+        )
 
-    def register_command(self, key: str, command: Command):
-        """Registers a command with a specific enum value."""
-        self.commands[key] = command
+        command.execute()
 
-    def handle_input(self, user_input: str):
-        """Handles user input by looking up the corresponding command and executing it."""
-        cmd = self.commands.get(user_input.upper())
-        if cmd:
-            cmd.execute()
-
-    def get_available_commands(self) -> dict[str, Command]:
-        """Returns the available commands for the current game state."""
-        return self.commands
+    def get_command_by_index(self, index: int) -> CommandSchema:
+        """Returns a CommandSchema based on the index of the command in the list of available commands."""
+        return self.game.get_available_commands()[index]

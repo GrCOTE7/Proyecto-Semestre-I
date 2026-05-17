@@ -16,7 +16,6 @@ class DummyPhase(Enum):
 class DummyGame(Game):
     def __init__(self):
         super().__init__(
-            name="Dummy Game",
             event_bus=EventBus(),
             buy_in=PlayerBuyIn(player_id=uuid4(), name="Test Player", amount=100),
         )
@@ -48,7 +47,7 @@ def test_event_notification():
 
     assert len(events_triggered) == 1
     assert events_triggered[0][0] == GenericEvent.PHASE_CHANGE
-    assert events_triggered[0][1] == DummyPhase.PHASE_ONE
+    assert events_triggered[0][1][0] == DummyPhase.PHASE_ONE
 
 
 def test_active_player():
