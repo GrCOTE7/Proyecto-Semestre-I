@@ -23,3 +23,7 @@ class CommandManager:
     def get_command_by_index(self, index: int) -> CommandSchema:
         """Returns a CommandSchema based on the index of the command in the list of available commands."""
         return self.game.get_available_commands()[index]
+
+    def get_commands(self):
+        """Returns the list of available commands for the current game state."""
+        return self.game.get_available_commands()

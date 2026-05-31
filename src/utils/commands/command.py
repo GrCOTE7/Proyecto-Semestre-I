@@ -59,6 +59,10 @@ class CommandParameter:
     value: Any = None
     """The resulting value after parsing the user input."""
 
+    def set_value(self, user_input: str):
+        """Parses the user input and sets the value."""
+        self.value = self.parser(user_input)
+
 
 @dataclass
 class CommandSchema:

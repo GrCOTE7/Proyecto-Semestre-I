@@ -36,6 +36,17 @@ class PlayerAccount:
         return None
 
 
+@dataclass(frozen=True)
+class PlayerView:
+    """
+    A class representing the player's view of the game, which can be used for rendering and for AI decision-making.
+    This can include information about the player's hand, their current bet, and any other relevant details.
+    """
+
+    id: UUID
+    name: str
+
+
 @dataclass
 class PlayerBuyIn:
     """
@@ -67,8 +78,8 @@ class PlayerController:
 
         self.event_bus.subscribe(GenericEvent.TURN_START, self.on_turn)
 
-    def on_turn(self, id: UUID):
-        self.is_my_turn = self.player_id == id
+    def on_turn(self, player_view: PlayerView):
+        self.is_my_turn = self.player_id == player_view.id
 
     def handle_input(self, command_idx: int):
         """Handles user input by looking up the corresponding command and executing it."""
@@ -101,7 +112,12 @@ class CPUController(PlayerController):
     """
 
     def __init__(
-        self, command_manager: CommandManager, event_bus: EventBus, player_id: UUID
+        self,
+        name: str,
+        command_manager: CommandManager,
+        event_bus: EventBus,
+        player_id: UUID,
     ):
         # Initialize Player part
         super().__init__(event_bus, command_manager, player_id)
+        self.name = name

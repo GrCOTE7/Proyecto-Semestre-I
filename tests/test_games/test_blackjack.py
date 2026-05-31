@@ -10,13 +10,6 @@ from pytest import fixture
 
 
 @fixture
-def mock_player_controller(mock_context):
-    return PlayerController(
-        mock_context["bus"], mock_context["cmd"], mock_context["player"].id
-    )
-
-
-@fixture
 def blackjack_game(mock_context):
     return Blackjack(
         mock_context["bus"],
@@ -179,9 +172,9 @@ def test_player_wins_blackjack(blackjack_game):
 
 def test_dealer_wins(blackjack_game):
     game: Blackjack = blackjack_game
-    result: BlackjackResult = None
+    result: BlackjackSnapshot = None
 
-    def on_dealer_win(winner, res: BlackjackResult):
+    def on_dealer_win(_, res: BlackjackSnapshot):
         nonlocal result
         result = res
 
@@ -192,7 +185,7 @@ def test_dealer_wins(blackjack_game):
     game.end_round()
 
     assert game.game_phase == BlackjackPhase.ROUND_END
-    assert result.payout == 0  # Player loses, so payout is 0
+    assert result.payout == -100
 
     assert result is not None
     assert result.player_cards == [
