@@ -1,64 +1,70 @@
+from casino.games.generic_events import GenericEvent
+from casino.games.poker.phases import PokerPhase
+from utils.event_listener import EventBus
 from utils.renderer import Renderer
-from .poker import Poker
+from .poker import PokerSnapshot
 from .events import PokerEvent
 
 
 class PokerRenderer(Renderer):
-    game: Poker
+    def __init__(self, event_bus: EventBus):
+        super().__init__(event_bus)
 
-    def __init__(self, game: Poker):
-        super().__init__(game)
+        self.event_bus.subscribe(PokerEvent.DEAL_CARDS, self.render_hands)
+        self.event_bus.subscribe(PokerEvent.CHOOSE_DEALER, self.render_dealer)
+        self.event_bus.subscribe(PokerEvent.PAID_BLIND, self.render_blinds)
+        self.event_bus.subscribe(PokerEvent.PLAYER_CALL, self.render_player_calls)
+        self.event_bus.subscribe(PokerEvent.PLAYER_RAISE, self.render_player_raises)
+        self.event_bus.subscribe(PokerEvent.PLAYER_FOLD, self.render_player_folds)
+        self.event_bus.subscribe(GenericEvent.PHASE_CHANGE, self.render_community_cards)
+        self.event_bus.subscribe(PokerEvent.PLAYER_ALL_IN, self.render_all_in)
+        self.event_bus.subscribe(
+            PokerEvent.AVAILABLE_COMMANDS, self.render_available_commands
+        )
+        self.event_bus.subscribe(PokerEvent.HAND_OVER, self.render_hand_over)
 
-        game.subscribe(PokerEvent.DEAL_CARDS, self.render_hands)
-        game.subscribe(PokerEvent.CHOOSE_DEALER, self.render_dealer)
-        game.subscribe(PokerEvent.PAID_BLIND, self.render_blinds)
-        game.subscribe(PokerEvent.PLAYER_CALL, self.render_player_action)
-        game.subscribe(PokerEvent.PLAYER_RAISE, self.render_player_action)
-        game.subscribe(PokerEvent.PLAYER_FOLD, self.render_player_action)
-
-    def render_hands(self):
+    def render_hands(self, snapshot: PokerSnapshot):
         """Renders the active player's hand. If hide_hand is True, it will not show the cards during the dealing process."""
 
-        # Only render the active player's hand when they have 2 cards, to avoid showing the hand during the dealing process.
-        for i, player in enumerate(self.game.all_players):
-            label = (
-                " (D)"
-                if i == self.game.dealer_idx
-                else (
-                    " (SB)"
-                    if i == (self.game.dealer_idx + 1) % len(self.game.all_players)
-                    else (
-                        " (BB)"
-                        if i == (self.game.dealer_idx + 2) % len(self.game.all_players)
-                        else ""
-                    )
-                )
+        for player in snapshot.active_players:
+            print(
+                f"{player.name}'s hand: {[str(card) if card.is_face_up else '[Hidden]' for card in player.cards]}"
             )
 
-            if player != self.game.player:
-                print(
-                    f"{player.player.name}'s hand{label}: [??] ({player.player.money:.2f} chips)"
-                )
-            else:
-                print(
-                    f"{player.player.name}'s hand{label}: {[str(card) for card in player.cards]} ({player.player.money:.2f} chips)"
-                )
+    def render_dealer(self, snapshot: PokerSnapshot):
+        print(f"Dealer is: {snapshot.dealer.name}")
 
-    def render_dealer(self):
-        print(f"Dealer is: {self.game.dealer.player.name}")
-
-    def render_blinds(self):
+    def render_blinds(self, snapshot: PokerSnapshot):
         print(
-            f"Blinds paid: Small blind = ${self.game.big_blind / 2:.2f}, Big blind = ${self.game.big_blind:.2f}"
+            f"Blinds paid: Small blind = ${snapshot.big_blind / 2:.2f}, Big blind = ${snapshot.big_blind:.2f}"
         )
 
-    def render_player_action(self):
-        print(f"{self.game.active_player.player.name} calls.")
+    def render_player_calls(self, snapshot: PokerSnapshot):
+        print(f"{snapshot.player.name} calls.")
 
-    def render_player_action(self):
-        print(
-            f"{self.game.active_player.player.name} raises to ${self.game.current_bet:.2f}."
-        )
+    def render_player_raises(self, snapshot: PokerSnapshot):
+        print(f"{snapshot.player.name} raises to ${snapshot.current_bet:.2f}.")
 
-    def render_player_action(self):
-        print(f"{self.game.active_player.player.name} folds.")
+    def render_player_folds(self, snapshot: PokerSnapshot):
+        print(f"{snapshot.player.name} folds.")
+
+    def render_community_cards(self, _, data: tuple[PokerPhase, PokerSnapshot]):
+        if data[0] in [PokerPhase.FLOP, PokerPhase.TURN, PokerPhase.RIVER]:
+            print(
+                f"Community cards: {[str(card) for card in data[1].community_cards]} (Pot: ${data[1].pot:.2f})"
+            )
+
+    def render_all_in(self, snapshot: PokerSnapshot):
+        print(f"{snapshot.player.name} goes all-in with ${snapshot.current_bet:.2f}.")
+
+    def render_available_commands(self, snapshot: PokerSnapshot):
+        print(f"Available commands ({snapshot.player.funds}$ available):")
+        for idx, command in enumerate(snapshot.available_commands, start=1):
+            print(f"{idx}. {command.display_name}")
+
+    def render_hand_over(self, snapshot: PokerSnapshot):
+        if snapshot.winners:
+            winners_str = ", ".join([winner.name for winner in snapshot.winners])
+            print(f"Hand over! Winner(s): {winners_str} (Pot: ${snapshot.pot:.2f})")
+        else:
+            print("Hand over! No winners determined.")

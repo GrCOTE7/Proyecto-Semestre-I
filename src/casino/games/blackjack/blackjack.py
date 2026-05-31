@@ -6,7 +6,7 @@ from utils.event_listener import EventBus
 
 from . import BlackjackPhase
 from casino.games import Game
-from casino.player import PlayerBuyIn, PlayerController
+from casino.player import PlayerBuyIn, PlayerController, PlayerView
 from utils.cards import CardView, Deck, Card, Rank
 from dataclasses import dataclass, field
 from casino.games.game_manager import GameManager
@@ -74,6 +74,17 @@ class BlackJackPlayer:
 
         return value
 
+    def to_view(self, cards_visible: bool = True) -> BlackjackPlayerView:
+        """Converts the player's state to a view object for rendering and AI decision-making."""
+        return BlackjackPlayerView(
+            id=self.player_id,
+            name="Player" if self.player_id else "Dealer",
+            cards=[
+                CardView.from_card(card, face_up=cards_visible) for card in self.cards
+            ],
+            balance=self.balance,
+        )
+
     @property
     def is_blackjack(self) -> bool:
         """Check if the player's hand is a blackjack (an Ace and a 10-value card)."""
@@ -83,6 +94,14 @@ class BlackJackPlayer:
     def has_busted(self) -> bool:
         """Check if the player's hand value exceeds 21 (busted)."""
         return self.hand_value > 21
+
+
+@dataclass(frozen=True)
+class BlackjackPlayerView(PlayerView):
+    """A view of the player's state in the Blackjack game, used for rendering and AI decision-making."""
+
+    cards: list[CardView]
+    balance: int
 
 
 class Blackjack(Game):
@@ -140,7 +159,9 @@ class Blackjack(Game):
         if self.dealer.is_blackjack:
             self.end_round()
 
-        self.event_bus.notify(GenericEvent.TURN_START, self.buy_in.player_id)
+        self.event_bus.notify(
+            GenericEvent.TURN_START, self.player.to_view(cards_visible=True)
+        )
         self.change_phase(BlackjackPhase.PLAYER_TURN, self.get_snapshot())
 
     def hit(self, player: BlackJackPlayer):

@@ -44,9 +44,9 @@ class Casino:
                 manager=GameManager,
                 renderer=BlackjackTerminalRenderer,
             ),
-            # CasinoGame(
-            #     name="Poker", game=Poker, manager=PokerManager, renderer=PokerRenderer
-            # ),
+            CasinoGame(
+                name="Poker", game=Poker, manager=PokerManager, renderer=PokerRenderer
+            ),
         ]
 
         self.player = PlayerAccount(id=uuid.uuid4(), name="Player1", balance=1000)
@@ -88,8 +88,17 @@ class Casino:
 
                         try:
                             choice = int(choice) - 1
-                            manager.player.handle_input(choice)
-                        except ValueError:
+                            command = manager.command_manager.get_commands()[choice]
+
+                            if command.parameters:
+                                for param in command.parameters:
+                                    user_input = input(param.prompt_text)
+                                    param.set_value(user_input)
+
+                            if command:
+                                manager.command_manager.execute_command(command)
+                        except (IndexError, ValueError) as e:
+                            print(e)
                             print(
                                 "Invalid input. Please enter a number corresponding to the available options."
                             )

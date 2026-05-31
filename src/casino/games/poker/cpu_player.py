@@ -1,19 +1,29 @@
 from casino.player import CPUController
-from typing import TYPE_CHECKING
 from .events import PokerEvent
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from casino.games.poker.poker import Poker
+    from .poker import PokerSnapshot
 
 
-class CPU(CPUController):
-    game: Poker
+class PokerCPU(CPUController):
+    def __init__(self, name, command_manager, event_bus, player_id):
+        super().__init__(name, command_manager, event_bus, player_id)
+        self.event_bus.subscribe(PokerEvent.CHANGE_PLAYER_TURN, self.on_player_action)
 
-    def __init__(self, name: str, game: Poker):
-        super().__init__(name, game)
+    def on_player_action(self, snapshot: PokerSnapshot):
+        if self.player_id == snapshot.player.id:
+            commands = snapshot.available_commands
 
-    def on_game_event(self, event: PokerEvent, *args, **kwargs):
-        match event:
-            case PokerEvent.CHANGE_PLAYER_TURN:
-                if self.game.active_player.player.id == self.id:
-                    self.game.active_player.make_decision()
+            # For simplicity, the CPU will always call if it has enough funds, otherwise it will fold.
+            if snapshot.current_bet <= snapshot.player.funds:
+                self.command_manager.execute_command(
+                    list(filter(lambda c: c.display_name == "Call", commands))[0]
+                )
+            else:
+                self.command_manager.execute_command(
+                    self.command_manager.execute_command(
+                        list(filter(lambda c: c.display_name == "Fold", commands))[0]
+                    )
+                )

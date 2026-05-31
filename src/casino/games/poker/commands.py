@@ -8,31 +8,41 @@ if TYPE_CHECKING:
 class CallCommand(Command):
     game: Poker
 
-    def __init__(self, game: Poker):
-        super().__init__(game)
-
     def execute(self):
-        self.game.player_call(self.game.active_player)
+        self.game.player_call()
 
 
 class RaiseCommand(Command):
     game: Poker
 
-    def __init__(self, game: Poker):
+    def __init__(self, game: Poker, amount: float):
         super().__init__(game)
+        self.raise_amount = amount
 
     def execute(self):
+        # TODO: Implement poker function to raise given value.
         # Only called for user player, so we can directly request the raise amount.
         # CPU players will automatically raise a random amount within their budget.
         if self.game.active_player == self.game.player:
-            self.game.request_player_raise()
+            self.game.player_raise(self.raise_amount)
 
 
 class FoldCommand(Command):
     game: Poker
 
-    def __init__(self, game: Poker):
-        super().__init__(game)
+    def execute(self):
+        self.game.player_fold()
+
+
+class ResetHandCOmmand(Command):
+    game: Poker
 
     def execute(self):
-        self.game.player_fold(self.game.active_player)
+        self.game.finish_hand(reset=True)
+
+
+class EndHandCommand(Command):
+    game: Poker
+
+    def execute(self):
+        self.game.finish_hand(reset=False)
