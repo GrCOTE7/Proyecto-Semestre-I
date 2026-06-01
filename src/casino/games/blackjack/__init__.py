@@ -5,20 +5,21 @@ class BlackjackEvent(Enum):
     """
     Enum to represent the different events that can occur during a Blackjack game,
     which can be used to trigger specific actions or updates in the game state or user interface.
+    Most events will receive a snapshot of the game state as an argument to the event callback unless specified otherwise.
     """
 
     PLAYER_HIT = auto()
-    """Event triggered when the player chooses to hit (take another card). The callback will include the game snapshot."""
+    """Event triggered when the player chooses to hit (take another card)."""
     PLAYER_STAND = auto()
-    """Event triggered when the player chooses to stand (keep their current hand). The callback will include the game snapshot."""
+    """Event triggered when the player chooses to stand (keep their current hand)."""
     DEALER_HIT = auto()
-    """Event triggered when the dealer hits (takes another card). The callback will include the game snapshot."""
+    """Event triggered when the dealer hits (takes another card)."""
     PLAYER_WINS = auto()
-    """Event triggered when the player wins the round. The callback will include the game snapshot."""
+    """Event triggered when the player wins the round."""
     DEALER_WINS = auto()
-    """Event triggered when the dealer wins the round. The callback will include the game snapshot."""
+    """Event triggered when the dealer wins the round."""
     TIE = auto()
-    """Event triggered when the round ends in a tie. The callback will include the game snapshot."""
+    """Event triggered when the round ends in a tie."""
 
 
 class BlackjackPhase(Enum):

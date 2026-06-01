@@ -9,21 +9,21 @@ class PokerEvent(Enum):
     END_HAND = auto()
     """Event triggered at the end of a hand."""
     CHOOSE_DEALER = auto()
-    """Event triggered when the dealer is chosen. A snapshot of the game is passed as an argument."""
+    """Event triggered when the dealer is chosen."""
     DEAL_CARDS = auto()
     """Event triggered when cards are dealt."""
     PAID_BLIND = auto()
-    """Event triggered when the small and big blind are paid. A snapshot of the game is passed as an argument."""
+    """Event triggered when the small and big blind are paid."""
     CHANGE_PLAYER_TURN = auto()
-    """Event triggered when the turn changes to the next player. A snapshot of the game is passed as an argument."""
+    """Event triggered when the turn changes to the next player."""
     PLAYER_CALL = auto()
-    """Event triggered when a player calls. A snapshot of the game is passed as an argument."""
+    """Event triggered when a player calls."""
     PLAYER_ALL_IN = auto()
-    """Event triggered when a player goes all-in. A snapshot of the game is passed as an argument."""
+    """Event triggered when a player goes all-in."""
     PLAYER_RAISE = auto()
-    """Event triggered when a player raises. A snapshot of the game is passed as an argument."""
+    """Event triggered when a player raises."""
     PLAYER_FOLD = auto()
-    """Event triggered when a player folds. A snapshot of the game is passed as an argument."""
+    """Event triggered when a player folds."""
     FLOP = auto()
     """Event triggered during the flop."""
     TURN = auto()
@@ -31,6 +31,6 @@ class PokerEvent(Enum):
     RIVER = auto()
     """Event triggered during the river."""
     AVAILABLE_COMMANDS = auto()
-    """Event triggered to notify the active player of their available commands. A snapshot of the game is passed as an argument."""
+    """Event triggered to notify the active player of their available commands."""
     HAND_OVER = auto()
-    """Event triggered at the end of a hand, after winners have been determined and chips have been distributed. A snapshot of the game is passed as an argument"""
+    """Event triggered at the end of a hand, after winners have been determined and chips have been distributed."""
