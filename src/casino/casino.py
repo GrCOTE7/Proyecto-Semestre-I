@@ -13,6 +13,11 @@ from .games.generic_events import GenericEvent
 from utils.commands.command_manager import CommandManager
 from utils.event_listener import EventBus
 from typing import Type
+from casino.games.slot_machine.slot_machine import (
+    SlotMachine,
+    SlotMachineManager,
+)
+from casino.games.slot_machine.renderer import SlotMachineRenderer
 
 
 @dataclass
@@ -46,6 +51,12 @@ class Casino:
             ),
             CasinoGame(
                 name="Poker", game=Poker, manager=PokerManager, renderer=PokerRenderer
+            ),
+            CasinoGame(
+                name="Slot Machine",
+                game=SlotMachine,
+                manager=SlotMachineManager,
+                renderer=SlotMachineRenderer,
             ),
         ]
 

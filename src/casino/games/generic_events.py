@@ -14,4 +14,4 @@ class GenericEvent(Enum):
     TURN_START = auto()
     """A new turn has started."""
     GAME_END = auto()
-    """The game has ended."""
+    """The game has ended. The payout is passed as an argument to the event callback."""

@@ -10,7 +10,7 @@ from uuid import UUID
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from casino.player import PlayerBuyIn
+    from casino.player import PlayerBuyIn, PlayerView
 
 
 class Game:
@@ -58,7 +58,4 @@ class Game:
 class Snapshot:
     """A snapshot of the game state at a specific point in time, used to pass around game state information."""
 
-    active_player_id: UUID
-    """The id of the currently active player, used to determine whose turn it is and what actions they can take."""
-    player_name: str
-    """The name of the currently active player, used for display purposes and to personalize the game experience."""
+    active_player: PlayerView
