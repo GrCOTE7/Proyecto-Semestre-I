@@ -1,3 +1,4 @@
+from casino.games.blackjack import BlackjackPhase
 from utils.commands.command import Command
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -12,9 +13,8 @@ class HitCommand(Command):
     game: Blackjack
 
     def execute(self):
-        player_id = self.game.active_player
         # If the active player is None, it means it's the dealer's turn, so we use the dealer as the active player for hitting.
-        active_player = self.game.get_player_by_id(player_id) or self.game.dealer
+        active_player = self.game.player if self.game.game_phase == BlackjackPhase.PLAYER_TURN else self.game.dealer
         self.game.hit(active_player)
 
 

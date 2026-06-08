@@ -132,37 +132,37 @@ class Blackjack(Game):
         self.game_phase = BlackjackPhase.PLAYER_TURN
 
     @property
-    def active_player(self) -> Optional[UUID]:
+    def active_player(self) -> Optional[BlackJackPlayer]:
         """
-        Returns the ID of the currently active player. During the player's turn, it returns the player's ID.
-        During the dealer's turn, it returns None since the dealer is not a player in the traditional sense and does not have a player ID.
+        Returns the currently active player. During the player's turn, it returns the player object.
+        During the dealer's turn, it returns None since the dealer is not a player in the traditional sense.
         """
-        return (
-            None
-            if self.game_phase == BlackjackPhase.DEALER_TURN
-            else self.buy_in.player_id
-        )
-
-    def get_player_by_id(self, player_id: UUID) -> Optional[BlackJackPlayer]:
-        """Returns the player object corresponding to the given player ID, or None if not found."""
-        if self.player.player_id == player_id:
-            return self.player
-        return None
+        return self.player
+    
 
     def start(self):
         # Give initial cards to player and dealer
         for _ in range(2):
+            self.change_phase(BlackjackPhase.PLAYER_TURN, self.get_snapshot())
             self.hit(self.player)
-            self.hit(self.dealer)
+            self.event_bus.notify(
+            BlackjackEvent.PLAYER_HIT, self.get_snapshot()
+            )
 
-        # If the dealer has a blackjack, the round ends immediately
-        if self.dealer.is_blackjack:
-            self.end_round()
+            self.change_phase(BlackjackPhase.DEALER_TURN, self.get_snapshot())
+            self.hit(self.dealer)
+            self.event_bus.notify(
+                BlackjackEvent.DEALER_HIT, self.get_snapshot()
+            )
 
         self.event_bus.notify(
             GenericEvent.TURN_START, self.player.to_view(cards_visible=True)
         )
         self.change_phase(BlackjackPhase.PLAYER_TURN, self.get_snapshot())
+
+        # If the dealer has a blackjack, the round ends immediately
+        if self.dealer.is_blackjack:
+            self.end_round()
 
     def hit(self, player: BlackJackPlayer):
         """Deals a new card to the specified player."""
@@ -239,12 +239,7 @@ class Blackjack(Game):
     ) -> BlackjackSnapshot:
         """Returns a snapshot of the current game state for rendering and logic purposes."""
         return BlackjackSnapshot(
-            (
-                self.buy_in.player_id
-                if self.game_phase == BlackjackPhase.PLAYER_TURN
-                else None
-            ),
-            self.buy_in.name if self.buy_in.name else "Dealer",
+            self.active_player.to_view(),
             [CardView.from_card(card) for card in self.player.cards],
             [
                 CardView.from_card(card, face_up=i == 0 or show_dealer_cards)

@@ -28,7 +28,8 @@ class BlackjackTerminalRenderer(Renderer):
 
     def player_hit(self, snapshot: BlackjackSnapshot):
         self.player_cards = snapshot.player_cards
-        self._render_table(f"{snapshot.player_name} Hits")
+        if snapshot.active_player:
+            self._render_table(f"{snapshot.active_player.name} Hits")
 
     def dealer_hit(self, snapshot: BlackjackSnapshot):
         self.dealer_cards = snapshot.dealer_cards
@@ -48,7 +49,7 @@ class BlackjackTerminalRenderer(Renderer):
         self.dealer_cards = snapshot.dealer_cards
         self.player_cards = snapshot.player_cards
         self._render_table(
-            f"Congratulations {snapshot.player_name}, you win! You gain ${snapshot.payout}."
+            f"Congratulations {snapshot.active_player.name}, you win! You gain ${snapshot.payout}."
         )
 
     def _render_table(self, msg: str):

@@ -691,11 +691,11 @@ class Poker(Game):
         """Returns a snapshot of the current game state, which can be used for rendering and for AI decision-making."""
         return PokerSnapshot(
             players_data=[
-                p.to_view(cards_visible=(p.id == self.player.id or show_cpu_cards))
+                p.to_view(cards_visible=p.id == self.player.id or show_cpu_cards)
                 for p in self.all_players
             ],
-            player_name=self.player.name,
-            active_players=[p.to_view() for p in self.active_players],
+            active_player=self.active_player.to_view(self.active_player.id == self.player.id or show_cpu_cards),
+            active_players=[p.to_view(p.id == self.player.id or show_cpu_cards) for p in self.active_players],
             active_player_id=self.active_player.id,
             player=self.active_player.to_view(),
             dealer=self.dealer.to_view(),
