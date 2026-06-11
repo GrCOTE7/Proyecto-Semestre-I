@@ -18,7 +18,8 @@ from casino.games.slot_machine.slot_machine import (
     SlotMachineManager,
 )
 from casino.games.slot_machine.renderer import SlotMachineRenderer
-
+from casino.games.roulette.roulette import Roulette, RouletteManager
+from casino.games.roulette.renderer import RouletteRenderer
 
 @dataclass
 class CasinoGame:
@@ -58,6 +59,12 @@ class Casino:
                 manager=SlotMachineManager,
                 renderer=SlotMachineRenderer,
             ),
+            CasinoGame(
+                name="Roulette",
+                game=Roulette,
+                manager=RouletteManager,
+                renderer=RouletteRenderer,
+            )
         ]
 
         self.player = PlayerAccount(id=uuid.uuid4(), name="Player1", balance=1000)
