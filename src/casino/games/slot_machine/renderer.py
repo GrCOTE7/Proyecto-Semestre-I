@@ -4,7 +4,7 @@ from casino.games.slot_machine.events import SlotMachineEvents
 from casino.games.slot_machine.slot_machine import SlotMachineSnapshot
 
 
-class SlotMachineRenderer(Renderer):
+class SlotMachineTerminalRenderer(Renderer):
     def __init__(self, event_bus):
         super().__init__(event_bus)
 

@@ -4,7 +4,7 @@ from unittest import case
 from casino.games import Game
 
 if TYPE_CHECKING:
-    from casino.games.poker.renderer import PokerRenderer
+    from casino.games.poker.renderer import PokerTerminalRenderer
 
 from utils.commands.command_manager import CommandManager
 from utils.commands.command_manager import CommandManager
@@ -120,7 +120,7 @@ class PokerManager(GameManager):
         self,
         game: Poker,
         player: PlayerAccount,
-        renderer: PokerRenderer,
+        renderer: PokerTerminalRenderer,
         player_buy_in: PlayerBuyIn,
         cpu_players: int = 5,
     ):

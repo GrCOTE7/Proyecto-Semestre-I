@@ -6,7 +6,7 @@ from .poker import PokerSnapshot
 from .events import PokerEvent
 
 
-class PokerRenderer(Renderer):
+class PokerTerminalRenderer(Renderer):
     def __init__(self, event_bus: EventBus):
         super().__init__(event_bus)
 

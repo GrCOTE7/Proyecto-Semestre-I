@@ -5,7 +5,7 @@ from casino.games.roulette.bets import RouletteBet
 from casino.games.roulette.events import RouletteEvents
 from casino.games.generic_events import GenericEvent
 
-class RouletteRenderer(Renderer):
+class RouletteTerminalRenderer(Renderer):
     def __init__(self, event_bus: EventBus):
         super().__init__(event_bus)
         self.event_bus.subscribe(RouletteEvents.BET_PLACED, self.on_bet) 
