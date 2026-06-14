@@ -1,5 +1,6 @@
 import flet as ft
 from utils.cards import CardView, Suit
+from pathlib import Path
 
 SUIT_LOOKUP = {
     Suit.HEARTS: ft.Colors.RED_600,
@@ -47,6 +48,16 @@ class CardControl(ft.Container):
         self.border = ft.Border.all(2, ft.Colors.WHITE)
         self.shadow = ft.BoxShadow(blur_radius=4, color=ft.Colors.with_opacity(0.3, ft.Colors.BLACK))
         
+        # current_dir = Path(__file__)
+        
+        # print(current_dir.parent.parent.parent)
+        # assets_path = current_dir / "assets"
+    
+        # src=str("/src/assets/images/card_back.png")
+        # print(f"{src = }")
+
+        # src=str(assets_path / "images" / "card_back.png"),
+        # assets_path = current_dir / "assets"
         self.content = ft.Image(
             src="images/card_back.png",
             fit=ft.BoxFit.CONTAIN,

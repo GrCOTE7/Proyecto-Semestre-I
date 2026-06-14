@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from utils.commands.command import Command, CommandSchema, CommandParameter
 from utils.commands.command_manager import CommandManager
 

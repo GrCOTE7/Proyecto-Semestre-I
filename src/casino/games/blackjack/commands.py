@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from casino.games.blackjack import BlackjackPhase
 from utils.commands.command import Command
 from enum import Enum
