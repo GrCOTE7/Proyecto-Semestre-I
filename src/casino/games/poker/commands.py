@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from utils.commands.command import Command
 from typing import TYPE_CHECKING
 
